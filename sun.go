@@ -102,6 +102,9 @@ func main() {
 	//
 	const o = time.Millisecond * 5
 	//тут ошибка возинкает...const k1, k2 = true, !k1
+	const(
+		h = time.Second * 4
+	)
 
 	fmt.Println("Go constant value")
 	fmt.Println("typed const a", a)
@@ -110,8 +113,29 @@ func main() {
 	//fmt.Println("untyped const k1", k1)
 	//fmt.Println("untyped const k2", k2)
 	fmt.Println("untyped const o", o)
+	fmt.Println("const block h", h)
 
-
+	//
+	// Constant enumeration
+	//
+	// The compiler will then automatically do the following:
+	// -Declare each member in the block as an untyped integer constant value
+	// -Initialize iota with a value of zero
+	// -Assign iota , or zero, to the first constant member ( StarHyperGiant )
+	// -Each subsequent constant is assigned an int value increased by one
+	const (
+		StarHyperGiant = iota
+		StarSuperGiant
+		StarBrightGiant
+		StarGiant
+		StarSubGiant
+		StarDwarf
+		StarSubDwarf
+		StarWhiteDwarf
+		StarRedDwarf
+		StarBrownDwarf
+	)
 	
+
 }
 
