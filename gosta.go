@@ -66,6 +66,23 @@ func main() {
 	findAny("AUD")
 	findAny(false)
 
+	// show unsorted
+	listCurr()
+	// sort
+	sortByNumber()
+	// show sorted
+	listCurr()
+
+}
+
+func listCurr() {
+	// like a while(true)
+	i := 0
+	for i < len(currencies) {
+		//FIXME: how does it work correct, humm?
+		fmt.Printf(" %d: %s\n",i,currencies[i])
+		i++
+	}
 }
 
 
@@ -124,3 +141,25 @@ func findAny(val interface{}) {
 	default: fmt.Printf("Unable to serach with type %T\n", val)
 	}
 }
+
+
+
+func sortByNumber() {
+	N := len(currencies)
+	for i := 0; i < N-1; i++ {
+		currMin := i
+		for k := i + 1; k < N; k++ {
+			if currencies[k].Number < currencies[currMin].Number {
+				currMin = k
+			}
+		}
+		// swap
+		if currMin != i {
+			temp := currencies[i]
+			currencies[i] = currencies[currMin]
+			currencies[currMin] = temp
+		}
+	}
+}
+
+
