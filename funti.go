@@ -17,7 +17,7 @@ import(
 // when function returns more than one value, an enclosing set of parentheses is ruquired
 
 // func [<func-id>] ([<arg-list>]) [(<result-list>)] {
-// [return] [<value or expression list>]
+// [return] [<value or expr-list>]
 //}
 
 // the 'return' statement causes the execution flow to exit function.
