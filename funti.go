@@ -27,6 +27,7 @@ import(
 // Otherwise, if no return values arespecified, the return statement is optional.
 
 
+// anonymous funcs
 var (
 	mul = func(op0, op1 int) int {
 		return op0 * op1
@@ -110,6 +111,53 @@ func main() {
 			return (f - 32.0) * (5.0 / 9.0)
 		}(94), // remember about last comma
 	)
+
+	for i := 0.0; i < float64(360); i += float64(45) {
+		// the function literal code block, func() float64 {return deg
+		// * math.Pi / 180}() , is defined as an expression that converts degrees to radians. With
+		// each iteration of the loop, a closure is formed between the enclosed function literal and the
+		// outer non-local variable, i . This provides a simpler idiom where the function naturally
+		// accesses non-local values without resorting to other means such as pointers.
+		rad := func() float64 {
+			return i * math.Pi / 180
+		}()
+		fmt.Printf("%.2f Dec = %.2f Rad\n", i, rad)
+
+		// attantion
+		rad2 := func() float64 {
+			return i * math.Pi / 180
+		}
+		fmt.Printf("address %.2f Dec = %.2f Rad\n", i, rad2)
+		fmt.Printf("value %.2f Dec = %.2f Rad\n", i, rad2())
+	}
+
+	//
+	//	Higher-order functions
+	//
+
+	// We have already established that Go functions are values bound to a type. So, it should not
+	// be a surprise that a Go function can take another function as a parameter and also return a
+	// function as a result value. This describes the notion known as a higher-order function,
+	// which is a concept adopted from mathematics. While types such as struct let
+	// programmers abstract data, higher-order functions provide a mechanism to encapsulate
+	// and abstract behaviors that can be composed together to form more complex behaviors.
+	nums := []int{4,32,11,67,2346,234,56,24,67}
+	result := apply(nums, func(i int) int {
+		return i / 2
+	})
+	result()
+	// As you explore this book, and the Go language, you will continue to encounter usage of
+	// higher-order functions. It is a popular idiom that is used heavily in the standard libraries.
+	// You will also find higher-order functions used in some concurrency patterns to distribute workloads
+}
+
+func apply(nums []int, f func (int) int) func() {
+	for i, v := range nums {
+		nums[i] = f(v)
+	}
+	return func() {
+		fmt.Println("Apply return: ", nums)
+	}
 }
 
 func half(val *float64) {
