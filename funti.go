@@ -27,6 +27,17 @@ import(
 // Otherwise, if no return values arespecified, the return statement is optional.
 
 
+var (
+	mul = func(op0, op1 int) int {
+		return op0 * op1
+	}
+
+	sqr = func(val int) int {
+		return mul(val,val)
+	}
+)
+
+
 func main() {
 	printPi()
 	fmt.Printf("Avogadro: %e 1/mol\n", avogadro())
@@ -45,6 +56,65 @@ func main() {
 	fmt.Println("anonymous: ", anonymous())
 	fmt.Printf("opAdd(12,44) = %d\n", opAdd(12,44))
 	fmt.Printf("opSub(99,13) = %d\n", opSub(99, 13))
+
+
+	fmt.Printf("Avg([1,2.5,3.75]) = %.2f\n", avg(1,2.5,3.75))
+	points := []float64{9,4,3.7,7.1,7.9,9.2,10}
+	// The slice can be passed as a variadic parameter 
+	// by adding ellipses to the parameter in the sum(points...)
+	//function call.
+	fmt.Printf("Sum(%v) = %.2f\n", points, sum(points...))
+
+	// an Euclidian division
+	q,r := EuclidianDiv(71,5)
+	fmt.Printf("EuclidianDiv(71,5): q = %d, r = %d\n", q, r)
+	q,r = EuclidianDivNamed(142,7)
+	fmt.Printf("EuclidianDivNamed(142,7): q = %d, r = %d\n", q, r)
+	// The return keyword is followed by the number of result values matching (respectively)
+	// the declared results in the function's signature. In the previous example, the signature of the
+	// div function specifies two int values to be returned as result values. Internally, the
+	// function defines int variables p and r that are returned as result values upon completion of
+	// the function. Those returned values must match the types defined in the function's
+	// signature or risk compilation errors.
+
+	// Functions with multiple result values must be invoked in the proper context:
+	// * They must be assigned to a list of identifiers of the same types respectively
+	// * They can only be included in expressions that expect the same number of
+	//   returned values
+
+
+	// There is no inherent concept of passing parameter values by reference.
+	// This means a local copy of the passed values is created inside the called function.
+	someValue := math.Pi
+	fmt.Printf("before dbl() : %.5f\n", someValue)
+	dbl(someValue)
+	fmt.Printf("after dbl() : %.5f\n", someValue)
+
+
+	// Achieving pass-by-reference
+	num := 2.807770
+	fmt.Printf("num = %f\n", num)
+	half(&num)
+	fmt.Printf("half(num) = %f\n", num)
+
+
+	//
+	// Anonymous Functions and Closures
+	//
+	fmt.Printf("mul(25,7) = %d\n", mul(25,7))
+	fmt.Printf("sqr(13) = %d\n", sqr(13))
+	// Invoking anonymous function literals
+	fmt.Printf(
+		"94 (*C) = %.2f (*C)\n",
+		func(f float64) float64 {
+			return (f - 32.0) * (5.0 / 9.0)
+		}(94), // remember about last comma
+	)
+}
+
+func half(val *float64) {
+	fmt.Printf("call half %f)\n", *val)
+	*val = *val / 2
 }
 
 //("fmt" "math") func printPi() {
@@ -104,6 +174,57 @@ func add(op0 int, op1 int) int {
 
 func sub(op0, op1 int) int {
 	return op0 - op1
+}
+
+//
+// Variadic parameters
+//
+// The last parameter of a function can be declared as variadic (variable length arguments) by
+// affixing ellipses ( ... ) before the parameter's type. This indicates that zero or more values of
+// that type may be passed to the function when it is called.
+func avg(nums ...float64) float64 {
+	n := len(nums)
+	t := 0.0
+	for _, v := range nums {
+		t += v
+	}
+	return t / float64(n)
+}
+
+func sum(nums ...float64) float64 {
+	var sum float64
+	for _, v := range nums {
+		sum += v
+	}
+	return sum
+}
+
+
+// a function that implements an Euclidian division algorithm
+func EuclidianDiv(op0, op1 int) (int,int) {
+	r := op0
+	q := 0
+	for r >= op1 {
+		q++
+		r = r - op1
+	}
+	return q,r
+}
+
+
+func EuclidianDivNamed(dvdn, dvsr int) (q,r int) {
+	r = dvdn
+	for r >= dvsr {
+		q++
+		r = r - dvsr
+	}
+	// Notice the return statement is naked;
+	return
+}
+
+func dbl(val float64) {
+	val = 2 * val // update param
+	fmt.Printf("dbl() = %.5f\n", val)
 }
 
 
