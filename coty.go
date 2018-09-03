@@ -57,7 +57,52 @@ type numbers_t [1024 * 1024]int
 
 type galaxies_t [14]string
 
-
+// the slice type and initialization
+var(
+	image []byte
+	ids []string = []string{"fe225", "ac144", "3d12c"}
+	vector = []float64{12.4, 44, 126, 2, 11.5}
+	monthsAsPtr = &[]string{
+		"January",
+		"Febuary",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"Augest",
+		"September",
+		"October",
+		"November",
+		"December",
+	}
+	months = []string{
+		"January",
+		"Febuary",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"Augest",
+		"September",
+		"October",
+		"November",
+		"December",
+	}
+	tables = []map[string][]int {
+		{
+			"age": {53, 13, 5, 55, 45, 62, 34, 7},
+			"pay": {124, 66, 777, 531, 933, 231},
+		},
+	}
+	q1 []string
+	historgram []map[string]int // slice of maps
+	graph = [][][][]int{
+		{{{44}, {3, 51}}, {{55, 12, 3}, {22, 4}}},
+		{{{22, 12, 19}, {7, 9}}, {{43, 0, 44, 12}, {7}}},
+	}
+)
 
 //
 // main driver
@@ -88,7 +133,34 @@ func main() {
 		"Cassiopeia",
 	}
 	printGalaxies(namedGalaxies)
+	// gethering address of months array
+	printMonths(&months)
+	// using ptr
+	printMonths(monthsAsPtr)
+
+	// slicing
+	allM := months[:]
+	m1 := months[:3]
+	m2 := months[3:]
+	mappedM3 := months[2:4]
+	fmt.Println(" all m: ", allM)
+	fmt.Println(" m1: ", m1)
+	fmt.Println(" m2: ", m2)
+	fmt.Println(" m3: ", mappedM3)
+	// expressions with capacity
+	// <slice_or_array_value>[<low_index>:<high_index>:max]
+	su := months[5:8:8]
+	fmt.Println(" summer: ", su)
 }
+
+
+func printMonths(months *[]string) {
+	fmt.Println("[Months]")
+	for _, m := range *months {
+		fmt.Println(" m: ", m)
+	}
+}
+
 
 func printGalaxies(galaxies *galaxies_t) {
 	fmt.Println(" [Galaxies]")
