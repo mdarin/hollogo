@@ -151,6 +151,86 @@ func main() {
 	// <slice_or_array_value>[<low_index>:<high_index>:max]
 	su := months[5:8:8]
 	fmt.Println(" summer: ", su)
+
+	// make() function
+	// making a slice
+	// This snippet will initialize the variable with a slice value with an initial
+	// length of 6 and a maximum capacity of 12
+	slice1 := make([]string, 6, 12)
+	fmt.Println(" slice: ", slice1)
+
+	vector = scale(2.45, vector)
+	fmt.Println(" new v: ", vector)
+	var cont bool = contains(float64(4.9), vector)
+	fmt.Println(" cont: ", cont)
+	// slices length and capacity
+	var vt []float64
+	fmt.Println(" zero-len: ", len(vt))
+	h := make([]float64, 4, 10)
+	fmt.Println(" len: ", len(h), ", cap: ", cap(h))
+	mnt := make([]string, 3, 3)
+	mnt = append(mnt, "Jan", "Feb", "March")
+	fmt.Println("len: ", len(mnt), "cap: ", cap(mnt), mnt)
+	mnt = append(mnt, "Jun", "Jul", "Aug")
+	fmt.Println("len: ", len(mnt), "cap: ", cap(mnt), mnt)
+
+	// copying
+	cp := clone(vector)
+	fmt.Println(" copy: ", cp)
+
+	// stirng as skuces
+	msg := "Bobsayshelloworld!"
+	fmt.Println(
+		" splitted: ",
+		msg[:3], msg[3:7], msg[7:12],
+		msg[12:17], msg[len(msg)-1:],
+	)
+	var sorted string = sort(msg)
+	fmt.Println(" sorted: ", sorted)
+}
+
+
+func sort(str string) string {
+	// The code shows the explicit conversion of a slice of bytes to a string value. Note
+	// that each character may be accessed using the index expression.
+	bytes := []byte(str)
+	var temp byte
+	// sorting...
+	for i := range bytes {
+		for j := i + 1; j < len(bytes); j++ {
+			if bytes[j] < bytes[i] {
+				temp = bytes[i]
+				bytes[i], bytes[j] = bytes[j], temp
+			}
+		}
+	}
+	return string(bytes)
+}
+
+
+// The copy function copies the content of v slice into result. 
+// Both source and target slices must be the same size and of the
+// same type or the copy operation will fail.
+func clone(v []float64) (result []float64) {
+	result = make([]float64, len(v), cap(v))
+	copy(result, v)
+	return
+}
+
+func scale(factor float64, vector []float64) []float64 {
+	for i := range vector {
+		vector[i] *= factor
+	}
+	return vector
+}
+
+func contains(val float64, vector []float64) bool {
+	for _, num := range vector {
+		if num == val {
+			return true
+		}
+	}
+	return false
 }
 
 
