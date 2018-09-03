@@ -97,12 +97,40 @@ var(
 		},
 	}
 	q1 []string
-	historgram []map[string]int // slice of maps
+	historgram1 []map[string]int // slice of maps
 	graph = [][][][]int{
 		{{{44}, {3, 51}}, {{55, 12, 3}, {22, 4}}},
 		{{{22, 12, 19}, {7, 9}}, {{43, 0, 44, 12}, {7}}},
 	}
 )
+
+//
+// In general, map type is specified as follows:
+// map[<key_type>]<element_type>
+//
+// The key specifies the type of a value that will be used 
+// to index the stored elements of the map. 
+// Map keys, MUST be of types that are comparable 
+// including numeric, string, Boolean, pointers, arrays, struct, 
+// and interface types (see Chapter 4 , Data Types, for 
+// discussion on comparable types).
+var (
+	legends map[int]string
+	histogram_map map[string]int = map[string]int{
+		"Jan":100, "Feb":445, "Mar":514, "Apr":233,
+		"May":321, "Jun":644, "Jul":113, "Aug":734,
+		"Sep":553, "Oct":344, "Nov":831, "Dec":312,
+	}
+	calibration map[float64]bool
+	matrix_map map[[2][2]int]bool // map whith array key type
+	table map[string][]int = map[string][]int{ // map of string:[]integer slices as K:V
+		"Men": []int{32, 55, 12, 58, 42, 76},
+		"Women": []int{44, 23, 43, 65, 38, 51},
+	}
+	log map[struct{name string}]map[string]string
+)
+
+
 
 //
 // main driver
@@ -170,9 +198,9 @@ func main() {
 	fmt.Println(" len: ", len(h), ", cap: ", cap(h))
 	mnt := make([]string, 3, 3)
 	mnt = append(mnt, "Jan", "Feb", "March")
-	fmt.Println("len: ", len(mnt), "cap: ", cap(mnt), mnt)
+	fmt.Println(" len: ", len(mnt), "cap: ", cap(mnt), mnt)
 	mnt = append(mnt, "Jun", "Jul", "Aug")
-	fmt.Println("len: ", len(mnt), "cap: ", cap(mnt), mnt)
+	fmt.Println(" len: ", len(mnt), "cap: ", cap(mnt), mnt)
 
 	// copying
 	cp := clone(vector)
@@ -187,6 +215,42 @@ func main() {
 	)
 	var sorted string = sort(msg)
 	fmt.Println(" sorted: ", sorted)
+
+	hist := make(map[string]int)
+	hist["Jan"] = 100
+	hist["Feb"] = 445
+	hist["Mar"] = 514
+	fmt.Println(" hist: ", hist)
+	jan_val := hist["Jan"]
+	fmt.Println(" jv: ", jan_val)
+// uncomment for testing!
+	//save(hist, "Feb", 1334)
+
+	// map traversal
+	// Each iteration returns a key and its associated element value. 
+	// Iteration order, however, is not guaranteed.
+	fmt.Println("[Histogram]")
+	for k,v := range histogram_map {
+		adjVal := int(float64(v) * 0.1000)
+		fmt.Printf(" %s (%d): ", k, v)
+		for i := 0; i < adjVal; i++ {
+			fmt.Print(".")
+		}
+		fmt.Println()
+	}
+
+}
+
+
+func save(store map[string]int, key string, value int) {
+	// Called the comma-ok idiom, the Boolean value stored in 
+	// the ok variable is set to false when the value is not actually found.
+	v, ok := store[key]
+	if !ok {
+		store[key] = value
+	} else {
+		panic(fmt.Sprintf("Slot %d taken ", v))
+	}
 }
 
 
