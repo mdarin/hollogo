@@ -7,6 +7,7 @@ import(
 	"fmt"
 	"time"
 	"math/rand"
+	"encoding/json"
 )
 
 var val [100]int = [100]int{44,72,12,55,64,1,4,90,13,54}
@@ -133,6 +134,103 @@ var (
 
 
 //
+// The struct type
+// The last type discussed in this chapter is Go's struct. 
+// It is a composite type that serves as a container 
+// for other named types known as fields.
+// Note that the struct type has the following general format:
+// struct{<field declaration set>}
+// Accessing struct fields
+// A struct uses a selector expression (or dot notation) 
+// to access the values stored in fields.
+// 	person.name
+// 	person.address.street
+// 	person.address.city
+var (
+	empty struct{}
+	car = struct{mark, model string}{mark: "Ford", model: "F150"}
+	currency = struct{name, country string; code int}{
+		"USD", "United States",
+		840,
+	}
+	node = struct{
+		edges []string
+		weight int
+	}{
+		edges: []string{"north", "south", "west"},
+	}
+	person struct{
+		name string
+		address struct{
+			street string
+			city, state string
+			postal string
+		}
+	}
+)
+
+// Declaring named struct types
+// Attempting to reuse struct types can get unwieldy fast.
+type person_t struct {
+	name string
+	address address_t
+}
+
+type address_t struct {
+	street string
+	city string
+	state string
+	postal string
+}
+
+// The anonymous fields
+// -The name of the type becomes the name of the field
+// -The name of an anonymous field may not clash with other field names
+// -Use only the unqualified (omit package) type name of imported types
+type diameter int
+type name struct {
+	long string
+	short string
+	symbol rune
+}
+type planet struct {
+	diameter
+	name
+	desc string
+}
+
+
+
+type person2_t struct {
+	name string
+	title string
+}
+
+// Field tags
+// The following shows a definition of the Person and Address i
+// structs that are tagged with JSON annotation which can be 
+// interpreted by Go's JSON encoder and decoder (found in the
+// standard library)
+type Person struct {
+	Name string `json:"person_name"`
+	Title string `json:"perosn_title"`
+	Address `json:"person_address_obj"`
+}
+// Notice the tags are represented as raw string values 
+// (wrapped within a pair of `` ). The tags are ignored by 
+// normal code execution. However, they can be collected 
+// using Go's reflection API as is done by the JSON library.
+type Address struct {
+	Street string `json:"person_addr_street"`
+	City string `json:"person_city"`
+	State string `json:"person_state"`
+	Postal string `json:"person_postal_code"`
+}
+
+
+
+
+//
 // main driver
 //
 func main() {
@@ -239,8 +337,100 @@ func main() {
 		fmt.Println()
 	}
 
+	// map functions
+	fmt.Println(" before len: ", len(hist)) // map contains 3 item
+	var err error = remove(hist, "Jun")
+	if err != nil {
+		// here we have got an error, because there is no key "Jun"
+		fmt.Println("E: ", err)
+	}
+	err = remove(hist, "Jan")
+	if err != nil {
+		// but here we are ok, there is "Jan" key which has been successfully found
+		// no error 
+		fmt.Println("E: ", err)
+	}
+	fmt.Println(" after len: ", len(hist)) // already, map contains 2 intems
+
+	//
+	// structs
+	//
+	fmt.Println(" car: ", car)
+	fmt.Println(" cur: ", currency)
+	fmt.Println(" node: ", node)
+	fmt.Println(" person: ", makePerson())
+	earth := planet{
+		diameter: 7926,
+		name: name{
+			long: "Earth",
+			short: "E",
+			symbol: '\u2641',
+		},
+		desc: "Third rock from the Sun",
+	}
+	fmt.Println(" earth: ", earth)
+	jupiter := planet{}
+	jupiter.diameter = 88846
+	jupiter.name.long = "Jupiter"
+	jupiter.name.short = "J"
+	jupiter.name.symbol = '\u2643'
+	jupiter.desc = "A ball of gas"
+	fmt.Println(" jupiter: ", jupiter)
+	// Promoted fields
+	// this will only work if the promotion does not cause any identifier clashes. 
+	// In case of ambiguity, the fully qualified selector expression can be used.
+	saturn := planet{}
+	saturn.diameter = 120536
+	saturn.long = "Saturn" // promoted field
+	saturn.short = "S" // promoted field
+	saturn.symbol = '\u2644' // promoted field
+	saturn.desc = "Slow mover"
+	fmt.Println(" saturn: ", saturn)
+	// sturct as params
+	p := new(person2_t)
+	p.name = "undefined"
+	// or we can use &(ampersand) to get an address if p is an object of the struct persone2_t
+	fmt.Println(" before p: ", p)
+	updateName(p, "Barmosnatch")
+	fmt.Println(" after p: ", p)
+
+	p1 := Person{}
+	p1.Name = "Faldy Follen"
+	p1.Title = "Author"
+	p1.Street = "415th st"
+	p1.City = "Govile"
+	p1.State = "Gonecticut"
+	p1.Postal = "453456"
+	encP1,_ := json.Marshal(p1)
+	fmt.Println(" jsoned: ", string(encP1))
 }
 
+func updateName(p *person2_t, name string) {
+	p.name = name
+}
+
+
+
+func makePerson() person_t {
+	addr := address_t {
+		city: "Goville",
+		state: "Gonecticut",
+		postal: "342312",
+	}
+	return person_t {
+		name: "Circul Schturman",
+		address: addr,
+	}
+}
+
+func remove(store map[string]int, key string) error {
+	_,ok := store[key]
+	if !ok {
+		return fmt.Errorf("Key not foud")
+	}
+	delete(store, key)
+	return nil // no error occured
+}
 
 func save(store map[string]int, key string, value int) {
 	// Called the comma-ok idiom, the Boolean value stored in 
