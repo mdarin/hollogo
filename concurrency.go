@@ -17,8 +17,18 @@ import(
 // ------------------------------------------------------------------------------------------
 
 
+// Channels
+// ----------
+// This is one area where Go diverges from its C lineage. Instead of having concurrent code
+// communicate by using shared memory locations, Go uses channels as a conduit between
+// running goroutines to communicate and share data.
+// (*Do not communicate by sharing memory; instead, share memory by communicating.*)
 
-
+// The channel type declares a conduit within which only values of a given element type may
+// be sent or received by the channel.
+// 
+// chan <element type>
+var channelNumric chan int
 
 func main() {
 	fmt.Println("hello concurrent world!")
@@ -50,6 +60,36 @@ func main() {
 		}(j)
 	}
 
+	// When the make function is invoked without the capacity argument, 
+	// it returns a bidirectional unbuffered channel.
+	chUnbuf := make(chan int) // unguffered channel
+	//chUnbuf <- 12 // fatal error: all goroutines are asleep - deadlock!
+	go func() { chUnbuf <- 12 }()
+	fmt.Println("unbuffered channel value: ", <-chUnbuf)
+
+	// When the make function uses the capacity argument, 
+	// it returns a bidirectional buffered channel
+	chBuf := make(chan int, 4) // buffered channel
+	chBuf <- 2
+	chBuf <- 4
+	chBuf <- 6
+	chBuf <- 8
+	// бадыль какой-то, но как-то так и делают, похоже...
+	for k := 0; k < cap(chBuf); k++ {
+		fmt.Println("buffered channel", k, " value: ", <-chBuf)
+	}
+
+	chClosed := make(chan int, 4)
+	chClosed <- 2
+	chClosed <- 4
+	close(chClosed)
+	for i := 0; i < 4; i++ {
+		if val, opened := <-chClosed; opened {
+			fmt.Println("channel value: ", val)
+		} else {
+			fmt.Println("channel closed ", val)
+		}
+	}
 
 	// For now, let us use fmt.Scanln() to block and wait for keyboard input, as
 	// shown in the following sample. In this version, the concurrent functions get a chance to
