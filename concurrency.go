@@ -5,6 +5,7 @@ package main
 
 import(
 	"fmt"
+	"strings"
 )
 // -----------------------------------------------------------------------------------------
 // Go has its own concurrency primitive called the goroutine, which allows a program to
@@ -95,6 +96,126 @@ func main() {
 	// shown in the following sample. In this version, the concurrent functions get a chance to
 	// complete while waiting for keyboard input
 	fmt.Scanln() // block for keyb input
+
+
+	// ===========================
+	// Writing concurrent programs
+	// ===========================
+
+	// a word histogram. 
+	// The program reads the words from the data slice then, on a separate goroutine,
+	// collects the occurrence of each word
+	data := []string{
+		"The yellow fish swims slowly in the water",
+		"The brown dog barks loudly after a drink ...",
+		"The dark bird bird of prey lands on a small ...",
+	}
+
+	histogram := make(map[string]int)
+	done := make(chan bool)
+
+	// anonymous function splits and count words
+	go func() {
+		for _, line := range data {
+			words := strings.Split(line, " ")
+			for _, word := range words {
+				word = strings.ToLower(word)
+				histogram[word]++
+			}
+		}
+		done <- true
+	}()
+
+	// receive done state from channel and test it
+	if state := <-done; state {
+		for k, v := range histogram {
+			fmt.Printf(" %s\t(%d)\n", k, v)
+		}
+	}
+
+	// Streaming data
+	// --------------
+	// A natural use of channels is to stream data from one goroutine to another. This pattern is
+	// quite common in Go code and for it to work, the followings must be done:
+	// - Continuously send data on a channel
+	// - Continuously receive the incoming data from that channel
+	// - Signal the end of the stream so the receiver may stop
+
+	histogram2 := make(map[string]int)
+	wordsCh := make(chan string)
+
+	// splits lines and sends words to channel
+	go func() {
+		defer close(wordsCh) // close channel when done
+		for _, line := range data {
+			words := strings.Split(line, " ")
+			for _, word := range words {
+				word = strings.ToLower(word)
+				wordsCh <-word
+			}
+		}
+	}()
+
+
+	// Using for...range to receive data
+	// The pattern is so common in Go that the idiom is built into the language in the
+	// form of the following for...range statement:
+	// for <elemem> := range <channel>{...}
+	// process word stream and count words
+	// loop until wordsCh is closed
+	//for {
+	//	word, opened := <-
+	//	wordsCh
+	//	if !opened {
+	//		break
+	//	}
+	//	histogram[word]++
+	//}
+	for word := range wordsCh {
+		histogram2[word]++
+	}
+	// When the channel is closed (from the goroutine), the loop automatically breaks.
+
+	fmt.Println("---------------")
+	for k, v := range histogram2 {
+		fmt.Printf("%s\t(%d)\n", k, v)
+	}
+
+	//
+	// Generator functions
+	//
+	histogram3 := make(map[string]int)
+	// In this example, the generator function, declared as func words(data []string) <-
+	// chan string , returns a receive-only channel of string elements. The consumer function, in
+	// this instance main() , receives the data emitted by the generator function, which is
+	// processed using a for...range loop
+	words := words(data) // returns handle to data channel
+	for word := range words {
+		histogram3[word]++
+	}
+
+	fmt.Println("---------------")
+	for k, v := range histogram3 {
+		fmt.Printf("%s\t(%d)\n", k, v)
+	}
+
+} // eof main
+
+
+// generator function that produces data
+func words(data []string) <-chan string {
+	out := make(chan string)
+	go func() {
+		defer close(out) // close channel upon fn return
+		for _, line := range data {
+			words := strings.Split(line, " ")
+			for _,word := range words {
+				word = strings.ToLower(word)
+				out <-word
+			}
+		}
+	}()
+	return out
 }
 
 // our worker
