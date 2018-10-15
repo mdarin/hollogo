@@ -6,6 +6,7 @@ package main
 import(
 	"fmt"
 	"strings"
+	"time"
 )
 // -----------------------------------------------------------------------------------------
 // Go has its own concurrency primitive called the goroutine, which allows a program to
@@ -30,6 +31,20 @@ import(
 // 
 // chan <element type>
 var channelNumric chan int
+
+// the Go language supports the select statement that multiplexes selection among 
+// multiple send and receive operations:
+// select {
+//	case <send_ or_receive_expression>:
+//	default:
+// }
+
+
+// One popular idiom that is commonly encountered with Go concurrency is the use of the
+// select statement, introduced previously, to implement timeouts. This works by using the
+// select statement to wait for a channel operation to succeed within a given time duration
+// using the API from the time package
+
 
 func main() {
 	fmt.Println("hello concurrent world!")
@@ -189,17 +204,87 @@ func main() {
 	// chan string , returns a receive-only channel of string elements. The consumer function, in
 	// this instance main() , receives the data emitted by the generator function, which is
 	// processed using a for...range loop
-	words := words(data) // returns handle to data channel
-	for word := range words {
+	words3 := words(data) // returns handle to data channel
+	for word := range words3 {
 		histogram3[word]++
 	}
 
-	fmt.Println("---------------")
+	fmt.Println("------3---------")
 	for k, v := range histogram3 {
 		fmt.Printf("%s\t(%d)\n", k, v)
 	}
 
+
+	//
+	// Selecting from multiple channels
+	//
+	histogram4 := make(map[string]int)
+	stopCh := make(chan struct{}) // used to signal 'stop'
+
+	words4 := words4(stopCh, data) // returns handle to channel
+	for word := range words4 {
+		if histogram4["the"] == 2 {
+			close(stopCh)
+		}
+		histogram4[word]++
+	}
+	fmt.Println("-------4--------")
+	for k, v := range histogram4{
+		fmt.Printf("%s\t(%d)\n", k, v)
+	}
+
+
+	//
+	// Channel timeout
+	//
+	histogram5 := make(map[string]int)
+	done5 := make(chan struct {})
+
+	go func() {
+		defer close(done5)
+		words5 := words(data) // returns handle to data channel
+		for word := range words5 {
+			histogram5[word]++
+		}
+		fmt.Println("-------5--------")
+		for k, v := range histogram5 {
+			fmt.Printf("%s\t(%d)\n", k, v)
+		}
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("Done counting words!")
+	case <-time.After(200 * time.Microsecond):
+		fmt.Println("Sorry, took too long to count.")
+	}
+
+
 } // eof main
+
+
+
+
+
+// selector
+func words4(stopCh chan struct{}, data []string) <-chan string {
+	out := make(chan string)
+	go func() {
+		defer close(out) // closes channel upon fn return
+		for _, line := range data {
+			words := strings.Split(line, " ")
+			for _, word := range words {
+				word := strings.ToLower(word)
+				select {
+				case out <-word:
+				case <-stopCh: // success first when close
+					return
+				} // eof select
+			} // eof for words
+		} // eof for line
+	}()
+	return out
+}
 
 
 // generator function that produces data
@@ -225,4 +310,6 @@ func count(id, start, stop, delta int) {
 		fmt.Println(i)
 	}
 }
+
+
 
