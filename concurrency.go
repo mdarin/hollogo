@@ -7,6 +7,7 @@ import(
 	"fmt"
 	"strings"
 	"time"
+	"sync" // The sync package
 )
 // -----------------------------------------------------------------------------------------
 // Go has its own concurrency primitive called the goroutine, which allows a program to
@@ -45,6 +46,70 @@ var channelNumric chan int
 // select statement to wait for a channel operation to succeed within a given time duration
 // using the API from the time package
 
+type Service struct {
+	started bool
+	stpCh chan struct{}
+	mutex sync.Mutex
+}
+
+func (s *Service) Start() {
+	s.stpCh = make(chan struct{})
+	go func() {
+		s.mutex.Lock()
+		s.started = true
+		s.mutex.Unlock()
+		fmt.Println(" mutex: Lock")
+		<-s.stpCh // wait to be closed
+	}()
+}
+
+func (s *Service) Stop() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.started {
+		s.started = false
+		close(s.stpCh)
+	}
+	fmt.Println(" mutex: Unlock")
+}
+
+
+type Service2 struct {
+	started bool
+	stpCh chan struct{}
+	mutex sync.RWMutex
+	cache map[int]string
+}
+
+func (s *Service2) Start2() {
+	s.stpCh = make(chan struct{})
+	s.cache = make(map[int]string)
+	go func() {
+		s.mutex.Lock()
+		s.started = true
+		s.cache[1] = "HAL-9000"
+		s.cache[2] = "T-800"
+		s.cache[3] = "T-1000"
+		s.cache[4] = "R2D2"
+		s.cache[5] = "WALL-E"
+		for k, v := range s.cache {
+			fmt.Println(" cache ", k, " ", v)
+		}
+		s.mutex.Unlock()
+		<-s.stpCh // wait to be closed
+	}()
+}
+
+func (s *Service2) Serve(id int) {
+	s.mutex.RLock()
+	msg := s.cache[id]
+	s.mutex.RUnlock()
+	if msg != "" {
+		fmt.Println("serve: ", msg)
+	} else {
+		fmt.Println("serve: nothing, hasta la vista baby!")
+	}
+}
 
 func main() {
 	fmt.Println("hello concurrent world!")
@@ -259,6 +324,28 @@ func main() {
 		fmt.Println("Sorry, took too long to count.")
 	}
 
+	//
+	// Synchronizing with mutex locks
+	//
+	fmt.Println(" =================== using mutex...")
+	s := &Service{}
+	s.Start()
+	time.Sleep(time.Second) // imitation of doing some kind of work
+	s.Stop()
+	fmt.Println(" =================== done!")
+
+	// The sync package also offers the RWMutex (read-write mutex), which can be used in cases
+	// where there is one writer that updates the shared resource, while there may be multiple
+	// readers.
+
+	s2 := &Service2{}
+	s2.Start2()
+	time.Sleep(time.Millisecond) // get a little bit waiting for... 
+	s2.Serve(1)
+	s2.Serve(2)
+	s2.Serve(3)
+	s2.Serve(4)
+	s2.Serve(5)
 
 } // eof main
 
