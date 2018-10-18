@@ -1,6 +1,8 @@
 //
 // Concurrency is considered to be the one of the most attractive features of Go.
 //
+// very unstable behaviour!
+//
 package main
 
 import(
@@ -110,6 +112,10 @@ func (s *Service2) Serve(id int) {
 		fmt.Println("serve: nothing, hasta la vista baby!")
 	}
 }
+
+
+const MAX = 1000
+const WORKERS = 4 
 
 func main() {
 	fmt.Println("hello concurrent world!")
@@ -340,17 +346,106 @@ func main() {
 
 	s2 := &Service2{}
 	s2.Start2()
-	time.Sleep(time.Millisecond) // get a little bit waiting for... 
 	s2.Serve(1)
 	s2.Serve(2)
 	s2.Serve(3)
 	s2.Serve(4)
 	s2.Serve(5)
 
+	fmt.Println("----------------------------")
+	// Concurrency barriers with sync.WaitGroup
+	// Using WaitGroup requires three things:
+	// - The number of participants in the group via the Add method
+	// - Each goroutine calls the Done method to signal completion
+	// - Use the Wait method to block until all goroutines are done
+	values := make(chan int, MAX)
+	result := make(chan int, 2)
+	var wg sync.WaitGroup
+	// create group about 2 workers	
+	wg.Add(2)
+	// gen multiple of 3 & 5 values
+	go func() {
+		for i := 1; i < MAX; i++ {
+			if (1 % 3) == 0 || (i % 5) == 0 {
+				values <-i // push downstream
+			}
+		}
+		close(values)
+	}()
+	// work unit, calc partial result
+	work := func() {
+		defer wg.Done()
+		r := 0
+		for i := range values {
+			r += i
+		}
+		result <-r
+	}
+	// distribute work to two goroutines
+	go work()
+	go work()
+	// waiting for all workers until they done
+	wg.Wait()
+	// ======================================
+	// It is important to remember that wg.Wait() will block indefinitely 
+	// if its internal counter never reaches zero.
+	// ======================================
+	// gether partial result
+	total := <-result + <-result
+	fmt.Println("total: ", total)
+
+	// Parallelism in Go
+	// The Go runtime scheduler, by default, will create a
+	// number of OS-backed threads for scheduling that is equal to the number of CPU cores. 
+	// That quantity is identified by runtime value called GOMAXPROCS.
+
+	values2 := make(chan int)
+	result2 := make(chan int, WORKERS)
+	var wg2 sync.WaitGroup
+
+	go func() {
+		for i := 1; i < MAX; i++ {
+			if (i % 3) == 0 || (i % 5) == 0 {
+				values2 <-i
+			}
+		}
+		close(values2)
+	}()
+
+	work2 := func() {
+		defer wg2.Done()
+		r := 0
+		for i := range values2 {
+			r += i
+		}
+		result2 <-r
+	}
+
+	// lounch workers
+	wg2.Add(WORKERS)
+	for i := 0; i < WORKERS; i++ {
+		go work2()
+	}
+	wg2.Wait()
+	close(result2)
+	total2 := 0
+	// gether partial result
+	for pr := range result2 {
+		total2 += pr
+	}
+	fmt.Println("total2: ", total2)
+
 } // eof main
 
 
-
+func gen_mult_3_5(ch *chan int) {
+	for i := 1; i < MAX; i++ {
+		if (i % 3) == 0 || (i % 5) == 0 {
+			*ch <-i
+		}
+	}
+	close(*ch)
+}
 
 
 // selector
