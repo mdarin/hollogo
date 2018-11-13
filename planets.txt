@@ -1,0 +1,4 @@
+Sun 685800 0 Start
+Earth  6378 1 Planet
+Mars 3396 2 Planet
+Neptune 49528 14 Planet

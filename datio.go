@@ -88,6 +88,16 @@ func (c *channelWriter) Write(p []byte) (int, error) {
 }
 
 
+type metalloid struct {
+	name string
+	number int32
+	weigth float64
+}
+
+
+//
+// main driver
+//
 func main() {
 	// io.Reader interface
 	// alpha
@@ -266,5 +276,78 @@ func main() {
 		fmt.Print(string(p[:n]))
 		fmt.Printf("\n---------Part len: %d bytes---------\n", n)
 	}
+
+
+	//
+	// Standard input, output, and error
+	//
+	f5, err := os.Open("./datio.go")
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+	defer f5.Close()
+
+	n2, err := io.Copy(os.Stdout, f5)
+	if err != nil {
+		fmt.Println("Failed to copy: ", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Copied %d bytes from %s\n", n2, f5.Name())
+
+
+// Formatted IO with fmt
+// One of the most widely used packages for IO is fmt ( h t t p s : / / g o l a n g . o r g / p k g / f m t ). It
+// comes with an amalgam of functions designed for formatted input and output. The most
+// common usage of the fmt package is for writing to standard output and reading from
+// standard input.	
+
+	var metalloids = []metalloid{
+		{"Boron", 5, 10.81},
+		//...
+		{"Polonium", 84, 209.0},
+	}
+
+	fmt.Println("Crating metalloids output file")
+	file1, err := os.Create("./metalloids.txt")
+	if err != nil {
+		fmt.Println("Unable to create file: ", err)
+		os.Exit(1)
+	}
+	defer file1.Close()
+
+	fmt.Println("Writing both to file and to stdout")
+	for _, m := range metalloids {
+		// out to file
+		fmt.Fprintf(file1, "%-10s %-10d %-10.3f\n", m.name, m.number, m.weigth)
+		// out to STDOUT
+		fmt.Printf("%-10s %-10d %-10.3f\n", m.name, m.number, m.weigth)
+	}
+	fmt.Println("Done!")
+
+	// Reading from io.Reader
+	var name, hasRing string
+	var diam, moons int
+
+	// read data from file
+	dataIn, err := os.Open("./planets.txt")
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+	defer dataIn.Close()
+
+	var stop bool = false
+	for !stop {
+		// scan and switch it in one string
+		switch _, err := fmt.Fscanf(dataIn, "%s %d %d %s\n", &name, &diam, &moons, &hasRing); err {
+		case io.EOF: stop = true // end of file then stop the cycle
+		case nil: // on success show the file content
+			fmt.Printf("%-10s %-10d %-6d %-6s\n", name, diam, moons, hasRing)
+		default: // if error occured
+			fmt.Println("Scan error: ", err)
+			os.Exit(1)
+		} // eof switch
+	} // eof for
 
 } // eof main
