@@ -142,4 +142,129 @@ func main() {
 	for c := range cw2.Channel {
 		fmt.Printf("consumer2: %c\n", c)
 	}
-}
+
+
+	// Working with files
+
+	f1,err := os.Open("./datio.go") // reblace by existing and not existing filename :)
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+	defer f1.Close()
+
+	f2,err := os.Create("./datio.go.bkp")
+	if err != nil {
+		fmt.Println("Unable to create file: ", err)
+		os.Exit(1)
+	}
+	defer f2.Close()
+
+	n,err := io.Copy(f2,f1)
+	if err != nil {
+		fmt.Println("Failed to copy: ", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("First: Copied %d bytes from %s to %s\n", n, f1.Name(), f2.Name())
+
+
+	//	The os.OpenFile function take three parameters.
+	f3, err := os.OpenFile("./datio.go", os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+	defer f3.Close()
+
+	//* Unable to create file:  open ./datio.go.back: no such file or directory
+	// if there is no file exists
+	f4, err := os.OpenFile("./datio.go.back", os.O_WRONLY|os.O_RDONLY, 0666)
+	if err != nil {
+		//* fmt.Println("Unable to create file: ", err)
+		//* os.Exit(1)
+		// solved by creating one by mysefl :)
+		// here is just an initialization(=) of existitng variables but not a short variable declaration(:=) of them
+		f4, err = os.Create("./datio.go.back")
+		if err != nil {
+			fmt.Println("Unable to create file: ", err)
+			os.Exit(1)
+		}
+	}
+	defer f4.Close()
+
+	n1, err := io.Copy(f4, f3)
+	if err != nil {
+		fmt.Println("Unable to copy: ", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Second: Copied %d bytes from %s to %s\n", n1, f3.Name(), f4.Name())
+
+
+	// Files writing and reading
+	rows := []string{
+		"The quick brown fox",
+		"jumps over the lazy dog",
+	}
+
+	fmt.Println("Crating the file")
+	fout, err := os.Create("./filewrite.txt")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer fout.Close()
+
+	fmt.Println("Writing to the file")
+	for _, row := range rows {
+		fout.WriteString(row)
+	}
+	// finalize file
+	fout.WriteString("\n")
+	fmt.Println("Done!")
+
+	// If, however, the source of your data is not text, you can write raw bytes directly to the file
+	rawData := [][]byte{
+		[]byte("The quick brown fox\n"),
+		[]byte("jumps over the lazy dog\n"),
+	}
+
+	fmt.Println("Crating the file")
+	fout1, err := os.Create("./filewrite.dat")
+	if err != nil {
+		fmt.Println("Unable to create file: ", err)
+		os.Exit(1)
+	}
+	defer fout1.Close()
+
+	fmt.Println("Writing to the file")
+	for _, out := range rawData {
+		fout1.Write(out)
+	}
+	fmt.Println("Done!")
+
+
+	// As an io.Reader , reading from of the io.File type directly can be done using the Read
+	// method. This gives access to the content of the file as a raw stream of byte slices. The
+	// following code snippet reads the content of file ./concurrency.go as raw bytes assigned
+	// to slice p up to 256-byte chunks at a time:
+	fin, err := os.Open("./concurrency.go")
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+	defer fin.Close()
+
+	// raw bytes assigned to slice p up to 256-byte chunks at a time
+	p := make([]byte, 256)
+	for {
+		n, err := fin.Read(p)
+		if err == io.EOF {
+			break
+		}
+		fmt.Print(string(p[:n]))
+		fmt.Printf("\n---------Part len: %d bytes---------\n", n)
+	}
+
+} // eof main
