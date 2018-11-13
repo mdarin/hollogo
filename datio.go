@@ -8,6 +8,7 @@ import(
 	"os"
 	"io"
 	"strings"
+	"bufio"
 )
 
 
@@ -326,6 +327,7 @@ func main() {
 	fmt.Println("Done!")
 
 	// Reading from io.Reader
+
 	var name, hasRing string
 	var diam, moons int
 
@@ -350,4 +352,83 @@ func main() {
 		} // eof switch
 	} // eof for
 
+	// Reading from standard input
+	var choice int
+	fmt.Println("A squrare is what?")
+	fmt.Print("Enter 1=qudrilateral 2=rectagonal\n>")
+
+	//
+	// NOTE!
+	// bug? you can input 'als' and program will terminate with exit reason 1 
+	// but furthermore it EXECUTE 'ls' command!
+	// I suppose that you shouldn't usr the scanf in the real world...
+	//
+	n3, err := fmt.Scanf("%d", &choice)
+	if n3 != 1 || err != nil {
+		fmt.Println("Follow derections!")
+		os.Exit(1)
+	}
+	if 1 == choice {
+		fmt.Println("You are correct!")
+	} else {
+		fmt.Println("Wrong, Google it.")
+	}
+
+
+	//
+	// Buffered IO
+	// Most IO operations covered so far have been unbuffered. This implies that each read and
+	// write operation could be negatively impacted by the latency of the underlying OS to handle
+	// IO requests. Buffered operations, on the other hand, reduces latency by buffering data in
+	// internal memory during IO operations.
+	//
+
+	rowsBuf := []string{
+		"The quick borwn fox",
+		"jumps over the lazy dog",
+	}
+
+	fmt.Println("Craating file")
+	fout2, err := os.Create("./filewrite_buf.dat")
+	fmt.Println("Creating writer")
+	writer := bufio.NewWriter(fout2)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer fout2.Close()
+	fmt.Println("Writing to file")
+	for _, row := range rowsBuf {
+		writer.WriteString(row)
+	}
+	// finalize file
+	writer.WriteString("\n")
+	// and flush buffer
+	writer.Flush()
+	fmt.Println("Done")
+
+
+
+	// read data from file
+	planetesFile, err := os.Open("./planets.txt")
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+	defer planetesFile.Close()
+
+	reader := bufio.NewReader(planetesFile)
+
+	stop = false
+	for !stop {
+		// scan and switch it in one string
+		switch line, err := reader.ReadString('\n'); err {
+		case io.EOF: stop = true // end of file then stop the cycle
+		case nil: // on success pring the line 
+			fmt.Print("line: ", line)
+		default: // if error occured
+			fmt.Println("Error reading: ", err)
+			os.Exit(1)
+		} // eof switch
+	} // eof for
 } // eof main
