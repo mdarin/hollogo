@@ -11,6 +11,7 @@ import(
 	"bufio"
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"time"
 )
 
@@ -523,7 +524,10 @@ func main() {
 	// Another common aspect of IO in Go is the encoding of data, from one representation to
 	// another, as it is being streamed.
 
+
 	// Binary encoding with gob
+
+	fmt.Println("Creating Books GOB binary")
 	books2 := []Book{
 		Book{
 			Title: "Learnig Go",
@@ -568,7 +572,9 @@ func main() {
 	}
 
 	var booksIn []Book
+	// create decoder
 	dec := gob.NewDecoder(file6)
+	// and read decodded stream
 	if err := dec.Decode(&booksIn); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -580,6 +586,39 @@ func main() {
 
 
 	// Encoding data as JSON
+
+	fmt.Println("Creating Books JSON")
+	file7, err := os.Create("book.json")
+	if err != nil {
+		fmt.Println("Unable to craete file: ", err)
+		os.Exit(1)
+	}
+
+	// create json encoding stream
+	toJson := json.NewEncoder(file7)
+	// write file encodded stream
+	if err := toJson.Encode(books2); err != nil {
+		fmt.Println("Unable to encode: ", err)
+		os.Exit(1)
+	}
+
+	file8, err := os.Open("book.json")
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+
+	var booksInJson []Book
+	// create json decoder stream
+	fromJson := json.NewDecoder(file8)
+	if err := fromJson.Decode(&booksInJson); err != nil {
+		fmt.Println("Unable to decode stream: ", err)
+		os.Exit(1)
+	}
+	// show books
+	for i, b := range booksIn {
+		fmt.Println("json book", i ,": ", b)
+	}
 
 
 } // eof main
