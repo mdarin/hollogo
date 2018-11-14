@@ -99,17 +99,48 @@ type metalloid struct {
 	weigth float64
 }
 
+
+
 type Name struct {
 	First, Last string
 }
+//
+// When the encoder encounters a value whose type
+// implements json.Marshaler , it delegates serialization of the value to the method
+// MarshalJSON defined in the Marshaller interface.
+func (n *Name) MarshalJSON() ([]byte, error) {
+	return []byte( fmt.Sprintf("\"%s %s\"", n.Last, n.First) ), nil
+}
+// For the inverse, when a decoder encounters a piece of JSON text that maps to a type that
+// implements json.Unmarshaler , it delegates the decoding to the type's UnmarshalJSON method.
+func (n *Name) UnmarshalJSON(data []byte) error {
+	var name string
+	err := json.Unmarshal(data, &name)
+	if err != nil {
+		fmt.Println(err)
+		// error 
+		return err
+	}
+	// here space is a separator for first and last names in the book.json file
+	parts := strings.Split(name, " ")
+	n.Last, n.First = parts[0], parts[1]
+	// success
+	return nil
+}
+//
+// The Name type is an implementation of json.Unmarshaler . When the decoder encounters
+// a JSON object with the key "Authors" , it uses the method Name.Unmarshaler to
+// reconstitute the Go struct Name type from the JSON string.
+
+
 
 type Book struct {
-	Title string
-	PageCount int
-	ISBN string
-	Authors []Name
-	Publisher string
-	PublishDate time.Time
+	Title string `json:"book_title"`
+	PageCount int `json:"pages,string"` // outputs the value as a string instead of a number.
+	ISBN string `json:"-"` // The dash causes the ISBN field to be skipped during encoding and decoding.
+	Authors []Name //`json:"auths,omniempty"` // [?] omniempty, causes the field to be omitted if its value is nil.
+	Publisher string `json:",omniempty"` // [?] omniempty, causes the field to be omitted when empty.
+	PublishDate time.Time `json:"pub_date"`
 }
 
 
@@ -548,6 +579,16 @@ func main() {
 			Publisher: "Addison-Wesley",
 			PublishDate: time.Date(2015, time.October, 26,0,0,0,0, time.UTC),
 		},
+		Book{
+			Title: "Go Programming Blueprints, 2nd Edition",
+			PageCount: 394,
+			ISBN: "9781786468949",
+			Authors: []Name{
+				{"Ryer","M."},
+			},
+			Publisher: "Packt",
+			PublishDate: time.Date(2016, time.October, 0,0,0,0,0, time.UTC),
+		},
 	}
 	// sefialize data structure to file
 	file5, err := os.Create("./book2.dat")
@@ -602,6 +643,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println("Reading Books JSON")
 	file8, err := os.Open("book.json")
 	if err != nil {
 		fmt.Println("Unable to open file: ", err)
@@ -620,6 +662,17 @@ func main() {
 		fmt.Println("json book", i ,": ", b)
 	}
 
+
+	// Custom encoding and decoding
+	// The JSON package uses two interfaces, Marshaler and Unmarshaler, to hook into encoding
+	// and decoding events respectively.
+
+
+	//
+	// NOTE: The Go standard libraries offer additional encoders (not covered here)
+	// including base32 , bas364 , binary , csv , hex , xml , gzip , and numerous
+	// encryption format encoders.
+	//
 
 } // eof main
 
