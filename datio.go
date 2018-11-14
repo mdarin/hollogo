@@ -9,6 +9,9 @@ import(
 	"io"
 	"strings"
 	"bufio"
+	"bytes"
+	"encoding/gob"
+	"time"
 )
 
 
@@ -94,6 +97,21 @@ type metalloid struct {
 	number int32
 	weigth float64
 }
+
+type Name struct {
+	First, Last string
+}
+
+type Book struct {
+	Title string
+	PageCount int
+	ISBN string
+	Authors []Name
+	Publisher string
+	PublishDate time.Time
+}
+
+
 
 
 //
@@ -339,6 +357,8 @@ func main() {
 	}
 	defer dataIn.Close()
 
+	fmt.Printf("%-10s %-10s %-6s %-6s\n", "Planet", "Diameters", "Moons", "Rign?")
+
 	var stop bool = false
 	for !stop {
 		// scan and switch it in one string
@@ -431,4 +451,136 @@ func main() {
 			os.Exit(1)
 		} // eof switch
 	} // eof for
+
+
+	// Scanning the buffer
+	// The bufio package also makes available primitives that are used to scan and tokenize
+	// buffered input data from an io.Reader source. The bufio.Scanner type scans input data
+	// using the Split method to define tokenization strategies.
+	file3, err := os.Open("./planets.txt")
+	if err != nil {
+		fmt.Println("Unable to open file: ", err)
+		os.Exit(1)
+	}
+	defer file3.Close()
+
+	fmt.Printf("%-10s %-10s %-6s %-6s\n", "Planet", "Diameters", "Moons", "Rigns?")
+
+	scanner := bufio.NewScanner(file3)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		fields := strings.Split(scanner.Text(), " ")
+		fmt.Printf("%-10s %-10s %-6s %-6s\n", fields[0], fields[1], fields[2], fields[3])
+	}
+
+	//
+	// In-memory IO
+	// The bytes package offers common primitives to achieve streaming IO on blocks of bytes,
+	// stored in memory, represented by the bytes.Buffer type. 
+	// 
+	// NOTE: Since the bytes.Buffer type implements both io.Reader and io.Writer interfaces 
+	// it is a great option to stream data into or out of memory using streaming IO primitives.
+	//
+
+	// create inmemory storage
+	var books bytes.Buffer
+	books.WriteString("The Great Gatsby")
+	books.WriteString("\n")
+	books.WriteString("1984")
+	books.WriteString("\n")
+	books.WriteString("A Tale of Two Cities")
+	books.WriteString("\n")
+	books.WriteString("Les Miserables")
+	books.WriteString("\n")
+	books.WriteString("The Call of the Wild")
+	books.WriteString("\n")
+	// pirnt it out in the stdout stream
+	books.WriteTo(os.Stdout)
+
+	// reinit our sotorage once more
+	books.WriteString("The Great Gatsby")
+	books.WriteString("\n")
+	books.WriteString("1984")
+	books.WriteString("\n")
+	books.WriteString("A Tale of Two Cities")
+	books.WriteString("\n")
+	books.WriteString("Les Miserables")
+	books.WriteString("\n")
+	books.WriteString("The Call of the Wild")
+	books.WriteString("\n")
+	// and stream the content to a regular file
+	file4, err := os.Create("./books.txt")
+	if err != nil {
+		fmt.Println("Unable to create file: ", err)
+		os.Exit(1)
+	}
+	defer file4.Close()
+	books.WriteTo(file4)
+
+	//
+	// Encoding and decoding data
+	// --------------------------
+	// Another common aspect of IO in Go is the encoding of data, from one representation to
+	// another, as it is being streamed.
+
+	// Binary encoding with gob
+	books2 := []Book{
+		Book{
+			Title: "Learnig Go",
+			PageCount: 375,
+			ISBN: "9781784395438",
+			Authors: []Name{{"Vladimir", "Viven"}},
+			Publisher: "Packt",
+			PublishDate: time.Date(2016, time.July, 0,0,0,0,0, time.UTC),
+		},
+		Book{
+			Title: "The Go Programmng Language",
+			PageCount: 380,
+			ISBN: "9780134190440",
+			Authors: []Name{
+				{"Alan", "Donavan"},
+				{"Brian", "Kernighan"},
+			},
+			Publisher: "Addison-Wesley",
+			PublishDate: time.Date(2015, time.October, 26,0,0,0,0, time.UTC),
+		},
+	}
+	// sefialize data structure to file
+	file5, err := os.Create("./book2.dat")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	// create stream
+	enc := gob.NewEncoder(file5)
+	// write encodded data to a file
+	if err := enc.Encode(books2); err != nil {
+		fmt.Println(err)
+	}
+
+	// The decoding process does the reverse by streaming the gob-encoded binary data using an
+	// io.Reader and automatically reconstructing it as a strongly-typed Go value.
+
+	file6, err := os.Open("book2.dat")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	var booksIn []Book
+	dec := gob.NewDecoder(file6)
+	if err := dec.Decode(&booksIn); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	// show books
+	for i, b := range booksIn {
+		fmt.Println("book", i ,": ", b)
+	}
+
+
+	// Encoding data as JSON
+
+
 } // eof main
+
