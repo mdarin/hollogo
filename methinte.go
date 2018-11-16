@@ -6,6 +6,7 @@ package main
 
 import(
 	"fmt"
+	"math"
 )
 
 //
@@ -112,7 +113,33 @@ func (r *rect) area() float64 {
 }
 // implementation of perim() method of the shape interface
 func (r *rect) perim() float64 {
-	return 2*r.length + 2*r.height
+	return 2 * r.length + 2 * r.height
+}
+//
+//Subtyping with Go interfaces
+//
+type triangle struct {
+	name string
+	a, b, c float64
+}
+//
+func (t *triangle) area() float64 {
+	return 0.5*(t.a * t.b)
+}
+//
+func (t *triangle) perim() float64 {
+	return t.a + t.b + math.Sqrt((t.a*t.a) + (t.b*t.b))
+}
+//
+func (t *triangle) String() string {
+	format := "%s[sides: a=%.2f b=%.2f c=%.2f]"
+	return fmt.Sprintf(format, t.name, t.a, t.b, t.c)
+}
+
+// via interface
+func shapeInfo(s shape) string {
+	format := "Area = %.2f, Perim = %.2f"
+	return fmt.Sprintf(format, s.area(), s.perim())
 }
 
 
@@ -131,14 +158,21 @@ func main() {
 	g.double()
 	fmt.Println("double: ", *g)
 
-	r := rect{
-		name: "RedSsquare",
-		length: 4,
-		height: 8,
+	r := &rect{
+		name: "Red square",
+		length: float64(4),
+		height: float64(8),
 	}
-	fmt.Println("rect: ", r)
-	fmt.Println("rect area: ", r.area())
-	fmt.Println("rect perim: ", r.perim())
+	fmt.Println(r, "=>", shapeInfo(r))
+
+	t := &triangle{
+		name: "Right triangle",
+		a: float64(1),
+		b: float64(2),
+		c: float64(3),
+	}
+	fmt.Println(t, "=>", shapeInfo(t))
+
 } // eof main
 
 
