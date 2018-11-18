@@ -88,11 +88,11 @@ func (g *gallon) double() {
 //
 // Using idiomatic Go, an interface type is almost always declared as a named type .
 //
-type shape interface {
-	area() float64
-	perim() float64
-}
-var s shape
+//type shape interface {
+//	area() float64
+//	perim() float64
+//}
+//var s shape
 //
 // Implementing an interface
 // The interesting aspect of interfaces in Go is how they are implemented and ultimately used.
@@ -136,12 +136,67 @@ func (t *triangle) String() string {
 	format := "%s[sides: a=%.2f b=%.2f c=%.2f]"
 	return fmt.Sprintf(format, t.name, t.a, t.b, t.c)
 }
-
-// via interface
-func shapeInfo(s shape) string {
-	format := "Area = %.2f, Perim = %.2f"
-	return fmt.Sprintf(format, s.area(), s.perim())
+//
+// Implementing multiple interfaces
+// The implicit mechanism of interfaces allows any named type to satisfy multiple interface
+// types at once. This is achieved simply by having the method set of a given type intersect
+// with the methods of each interface type to be implemented.
+//
+// Interface embedding
+// Another interesting aspects of the interface type is its support for type embedding
+// (similar to the struct type). This gives you the flexibility to structure your types in ways
+// that maximize type reuse.
+// 
+type shape interface {
+	area() float64
 }
+//
+type polygon interface {
+	shape
+	perim() float64
+}
+//
+type curved interface {
+	shape
+	circonf() float64
+}
+//
+type circle struct {
+	name string
+	rad float64
+}
+//
+func (c* circle) area() float64 {
+	return math.Pi * (c.rad * c.rad)
+}
+//
+func (c *circle) circonf() float64 {
+	return 2 * math.Pi * c.rad
+}
+//
+
+
+
+
+
+// via interface v.1
+// func shapeInfo(s shape) string {
+// 	format := "Area = %.2f, Perim = %.2f"
+// 	return fmt.Sprintf(format, s.area(), s.perim())
+// }
+
+// via polygon interface v.2
+func polygonShapeInfo(p polygon) string {
+	format := "Area = %.2f, Perim = %.2f"
+	return fmt.Sprintf(format, p.area(), p.perim())
+}
+
+// via curved interface v.2
+func curvedShapeInfo(c curved) string {
+	format := "Area = %.2f, Circonf = %.2f"
+	return fmt.Sprintf(format, c.area(), c.circonf())
+}
+
 
 
 //
@@ -164,7 +219,8 @@ func main() {
 		length: float64(4),
 		height: float64(8),
 	}
-	fmt.Println(r, "=>", shapeInfo(r))
+	//fmt.Println(t, "=>", shapeInfo(r))
+	fmt.Println(r, "=>", polygonShapeInfo(r))
 
 	t := &triangle{
 		name: "Right triangle",
@@ -172,7 +228,14 @@ func main() {
 		b: float64(2),
 		c: float64(3),
 	}
-	fmt.Println(t, "=>", shapeInfo(t))
+	//fmt.Println(t, "=>", shapeInfo(t))
+	fmt.Println(t, "=>", polygonShapeInfo(t))
+
+	c := &circle {
+		name: "Found circle",
+		rad: float64(6),
+	}
+	fmt.Println(c, "=>", curvedShapeInfo(c))
 
 } // eof main
 
