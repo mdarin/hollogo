@@ -47,6 +47,7 @@ func (ft *FuelTank) fill() {
 
 
 
+
 // methods...
 type gallon float64
 
