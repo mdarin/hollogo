@@ -23,6 +23,7 @@ import(
 	"os"
 	"io"
 	"strings"
+//	"crypto/sha1"
 )
 
 
@@ -32,6 +33,7 @@ import(
 // It consists of a single method, Read([]byte)(int, error) , 
 // intended to let programmers implement code that reads data, 
 // from an arbitrary source, and transfers it into the provided slice of bytes.
+//
 type Reader interface {
 	Read(p []byte) (n int, err error)
 }
@@ -94,22 +96,132 @@ func (b *bettaSource) Read(p []byte) (int, error) {
 			p[i] = 0
 		}
 	} // eof for
+//
+// NOTE: As a guideline, implementations of the io.Reader should return an error value of io.EOF 
+// when the reader has no more data to transfer into stream p .
+//
 	return count, io.EOF
 } // eof func
 
+
+
+// The io.Writer interface
+//
+// The interface requires the implementation of a single method, Write(p []byte)(c int,e error) ,
+// that copies data from the provided stream p and writes that data to a sink
+// resource such as an in-memory structure, standard output, a file, a network connection,
+// or any number of io.Writer implementations that come with the Go standard library.
+//
+type Writer interface {
+	Write(p []byte) (n int, err error)
+}
+//
+type channelSource struct {
+	Channel chan byte
+}
+// constructor
+func NewChannelSource() *channelSource {
+	return &channelSource{Channel: make(chan byte, 1024)}
+}
+// writer method realization
+func (c *channelSource) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+
+	go func() {
+		// close channel when done
+		defer close(c.Channel)
+		// read input stream p and sink it into the channel
+		for _, b := range p {
+			c.Channel <-b
+		}
+	}() // of goroutine
+//	
+// NOTE: The Write method returns the number of bytes copied from p 
+// followed by an error value if any was encountered.
+//
+	return len(p), nil
+} // eof func
 
 
 //
 // main driver
 //
 func main() {
+	// reader
 	alpha := alphaSource("Hello! Where is the Sun?")
-	io.Copy(os.Stdout, &alpha)
-	fmt.Println()
+	_, err := io.Copy(os.Stdout, &alpha)
+	if err != nil {
+		fmt.Println("Error copying:", err)
+		os.Exit(1)
+	}
 
 	str := strings.NewReader("Hello! Where is the Sun?")
 	betta := NewBettaSource(str)
-	io.Copy(os.Stdout, betta)
+	_, err = io.Copy(os.Stdout, betta)
+	if err != nil {
+		fmt.Println("Error copying:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Reading from file and writing into STDOUT")
+
+	file_a, err := os.Open("./hollogo.go")
+	if err != nil {
+		fmt.Println("Unable to open file", err)
+		os.Exit(1)
+	}
+	defer file_a.Close()
+
+	betta = NewBettaSource(file_a)
+	_, err = io.Copy(os.Stdout, betta)
+	if err != nil {
+		fmt.Println("Error copying:", err)
+		os.Exit(1)
+	}
+
 	fmt.Println()
+
+	// writer
+	gamma := NewChannelSource()
+	// craate a data source origin(Reader)
+	go func() {
+		fmt.Fprint(gamma, "Stream me!")
+	}()
+
+	// consume channel
+	for c := range gamma.Channel {
+		fmt.Printf("[%c]", c)
+	}
+	fmt.Println()
+	fmt.Println("-------------------")
+	fmt.Println()
+
+	gamma = NewChannelSource()
+	file_b, err := os.Open("./hollogo.go")
+	if err != nil {
+		fmt.Println("Error reading file:", err)
+		os.Exit(1)
+	}
+	defer file_b.Close()
+
+	_, err = io.Copy(gamma, file_b)
+	if err != nil {
+		fmt.Println("Error copying:", err)
+		os.Exit(1)
+	}
+	// consume channel
+	for c := range gamma.Channel {
+		fmt.Printf("[%c]", c)
+	}
+	fmt.Println()
+
+/*
+	fin, _ := os.Open("./hollogo.go")
+	defer fin.Close()
+	sha := sha1.New()
+	data := io.TeeReader(fin,sha)
+*/
 
 } // eof main
