@@ -197,6 +197,88 @@ func curvedShapeInfo(c curved) string {
 	return fmt.Sprintf(format, c.area(), c.circonf())
 }
 
+//
+// The empty interface type
+//
+// The interface{} type, or the empty interface type, is the literal representation of an
+// interface type with an empty method set. According to our discussion so far, it can be
+// deduced that all types implement the empty interface since all types can have a method set with
+// zero or more members.
+//
+// NOTE: The empty interface is crucially important for idiomatic Go.
+//
+var emptyInterface interface{}
+
+
+//
+// Type assertion
+//
+// Type assertion is a mechanism that is available in Go to idiomatically narrow a variable 
+// (of interface type) down to a concrete type and value that are stored in the variable.
+//
+type food interface {
+	eat()
+}
+
+type veggie string
+// vegied type implementation of the food interface
+func (v veggie) eat() {
+	fmt.Println("Eating", v)
+}
+
+type meat string
+// meat type implementation of the food interface
+func (m meat) eat() {
+	fmt.Println("Eating tasty", m)
+}
+
+// hi-level API function with the food interface
+func eat(f food) {
+// The general form for type assertion expression is given as follows:
+//
+// <interface_variable>.(concrete type name)
+//
+// The type assertion expression can
+// return two values: one is the concrete value (extracted from the interface) 
+// and the second is a Boolean indicating the success of the assertion, as shown here:
+//
+// value, boolean := <interface_variable>.(concrete type name)
+//
+//	if v, ok := f.(veggie); ok {
+//		switch v {
+//		case "okra": fmt.Println("Yuk! not eating ", v)
+//		default: v.eat()
+//		} // eof switch
+//	}
+//
+// A type assertion expression can also return just the value, as follows:
+//
+// value := <interface_variable>.(concrete type name)
+//
+// ATTENTION! This form of assertion is risky to do as the runtime will 
+// cause a panic in the program if the value stored in the interface variable is not of 
+// the asserted type. Use this form only if you have other safeguards to either prevent 
+// or gracefully handle a panic.
+	switch morsel := f.(type) {
+	case veggie:
+		switch morsel {
+		case "okra":
+			fmt.Println("Yuk! not eating", morsel)
+		default:
+			morsel.eat()
+		}
+	case meat:
+		switch morsel {
+		case
+			"beef": fmt.Println("Yuk! not eating", morsel)
+		default:
+			morsel.eat()
+		}
+	default:
+		fmt.Println("Not eating whatever that is", f)
+	} // eof switch
+}
+
 
 
 //
@@ -237,7 +319,30 @@ func main() {
 	}
 	fmt.Println(c, "=>", curvedShapeInfo(c))
 
+	var anyType interface{}
+	anyType = float64(77) // I'm a float now"
+	anyType = "I am s string now"
+	fmt.Println("any type: ", anyType)
+
+	printAnyType("The car is slow")
+	var m map[string] string = map[string] string{"ID": "12345", "name": "Kerry"}
+	printAnyType(m) // print out m as a map structure 
+	printAnyType(1234567899) // print out an integer value
+
+
+	eat(veggie("okra"))
+	eat(veggie("cabage"))
+
+	eat(meat("beef"))
+	eat(meat("veal"))
+
+
 } // eof main
+
+
+func printAnyType(value interface{}) {
+	fmt.Println("::value -> ", value)
+}
 
 
 
