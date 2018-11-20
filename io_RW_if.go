@@ -12,7 +12,7 @@ package main
 // as illustrated in the following figure:
 //
 // (data source(origin)) ===|> [][][]...[][][] ===|> (data source(target))
-//               						Stream of bytes ([]byte)
+//                         Stream of bytes ([]byte)
 //  Input with Reader:  
 // Reads bytes into stram
 //                                                      Output with Writer:
