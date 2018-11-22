@@ -23,7 +23,9 @@ import(
 	"os"
 	"io"
 	"strings"
-//	"crypto/sha1"
+	"crypto/sha1"
+	"crypto/md5"
+	"compress/gzip"
 )
 
 
@@ -145,6 +147,9 @@ func (c *channelSource) Write(p []byte) (int, error) {
 } // eof func
 
 
+
+
+
 //
 // main driver
 //
@@ -198,7 +203,7 @@ func main() {
 	fmt.Println("-------------------")
 	fmt.Println()
 
-	gamma = NewChannelSource()
+	writer := NewChannelSource()
 	file_b, err := os.Open("./hollogo.go")
 	if err != nil {
 		fmt.Println("Error reading file:", err)
@@ -206,22 +211,45 @@ func main() {
 	}
 	defer file_b.Close()
 
-	_, err = io.Copy(gamma, file_b)
+	_, err = io.Copy(writer, file_b)
 	if err != nil {
 		fmt.Println("Error copying:", err)
 		os.Exit(1)
 	}
 	// consume channel
-	for c := range gamma.Channel {
+	for c := range writer.Channel {
 		fmt.Printf("[%c]", c)
 	}
 	fmt.Println()
 
-/*
+
+
 	fin, _ := os.Open("./hollogo.go")
 	defer fin.Close()
+	fout, _ := os.Create("./teereader.gz")
+	defer fout.Close()
+
+	zip := gzip.NewWriter(fout)
+	defer zip.Close()
+
 	sha := sha1.New()
-	data := io.TeeReader(fin,sha)
-*/
+
+	data := io.TeeReader(fin, sha)
+	io.Copy(zip, data)
+	fmt.Printf("SHA1 hash %x\n", sha.Sum(nil))
+
+	md := md5.New()
+
+	data2 := io.TeeReader(io.TeeReader(fin, md), sha)
+	io.Copy(zip, data2)
+
+	// let's try to create more complex schema where 
+	// we have got a FileReader as a sourceOrigin for DataTransfromer that is a sourceTarger for the FileReader
+	// furthermore our DataTransformer is a sourceOrigin for another on component FileWriter which is the end of the our schema
+	// fin = os.Open()
+	// fout = os.Create()
+	// r.FileReader(FileIn)
+	// w.FileWriter(FileOut)
+	// t.DataTransformer(r,w)
 
 } // eof main
