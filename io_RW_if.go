@@ -243,13 +243,4 @@ func main() {
 	data2 := io.TeeReader(io.TeeReader(fin, md), sha)
 	io.Copy(zip, data2)
 
-	// let's try to create more complex schema where 
-	// we have got a FileReader as a sourceOrigin for DataTransfromer that is a sourceTarger for the FileReader
-	// furthermore our DataTransformer is a sourceOrigin for another on component FileWriter which is the end of the our schema
-	// fin = os.Open()
-	// fout = os.Create()
-	// r.FileReader(FileIn)
-	// w.FileWriter(FileOut)
-	// t.DataTransformer(r,w)
-
 } // eof main
