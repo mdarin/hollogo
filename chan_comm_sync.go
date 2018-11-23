@@ -12,7 +12,7 @@ import(
 // you may adjust this value to activate timeout case in the select statement
 // it should be less then current value
 // it's a boundary value now
-const TIMEOUT = 1000
+const TIMEOUT = 10000
 
 func main() {
 
@@ -24,54 +24,66 @@ func main() {
     "Blue are the sparkles in my cats eyes",
   }
 	done := make(chan struct{})
+	doneCounter := make(chan struct{})
 	progress := make(chan string)
 	wordsCounter := make(chan string)
 
 
 	// process words worker
 	go func() {
-		defer close(done)
-		fmt.Printf("\t\tReader\n\n")
+		//defer close(done)
+		defer close(progress)
+		fmt.Printf("*Reader started\n")
 		for word := range wordsGenerator(data) {
 			fmt.Sprintf("%s", word)
 			progress<- word
 		}
+		fmt.Println("*Reader terminated\n")
 	}()
+
 
 	// progress monitor worker
 	go func() {
 		defer close(wordsCounter)
-		fmt.Println("\t\tProgress\n")
+		fmt.Println("*Progress sarted\n")
 		i := 0
 		for word := range progress {
+		//for range progress {
 			i++
 			fmt.Printf(".%d.",i)
 			wordsCounter<- word
 		}
+		fmt.Println("*Progress termitated\n")
 	}()
 
 	// counter worker
 	go func() {
-		defer close(progress)
-		fmt.Printf("\t\tCounter\n\n")
-		for word := range wordsCounter {
-			fmt.Printf("%s", word)
-	//	for range wordsCounter {
-			continue
-		}
+		fmt.Printf("*Counter started\n")
+		// child worker
+		go func () {
+			defer close(doneCounter)
+			fmt.Println("*Counter child\n")
+			for word := range wordsCounter {
+				fmt.Printf("%s ", word)
+		//	for range wordsCounter {
+				continue
+			}
+			fmt.Println("*Counter child terminated\n")
+		}()
+		fmt.Println("*Counter terminated\n")
 	}()
-
 
 
 	// controller-sycronizer
 	select {
-	case <-done:
-		fmt.Println()
+	case <-doneCounter:
 		fmt.Println()
 		fmt.Println("Done counting words.\nTotal: ")
+	case <-done:
+		fmt.Println()
+		fmt.Println("Done reading.")
 	case <-time.After(TIMEOUT * time.Microsecond):
 //	case <-time.After(TIMEOUT * time.Millisecond):
-		fmt.Println()
 		fmt.Println()
 		fmt.Println("Sorry, took too long to count.")
 	}
