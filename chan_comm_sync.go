@@ -27,6 +27,7 @@ func main() {
 	doneCounter := make(chan struct{})
 	progress := make(chan string)
 	wordsCounter := make(chan string)
+	counterAccumulator := make(chan int)
 
 
 	// process words worker
@@ -61,16 +62,30 @@ func main() {
 		fmt.Printf("*Counter started\n")
 		// child worker
 		go func () {
-			defer close(doneCounter)
+			//defer close(doneCounter)
+			defer close(counterAccumulator)
 			fmt.Println("*Counter child\n")
+			n := 0;
 			for word := range wordsCounter {
 				fmt.Printf("%s ", word)
 		//	for range wordsCounter {
+				n++
 				continue
 			}
+			counterAccumulator<- n
 			fmt.Println("*Counter child terminated\n")
 		}()
 		fmt.Println("*Counter terminated\n")
+	}()
+
+	// Accountant worker
+	go func() {
+		defer close(doneCounter)
+		fmt.Println("*Result accumulator started")
+		for wordsCount := range counterAccumulator {
+			fmt.Println("Total:", wordsCount)
+		}
+		fmt.Println("*Result accumulator terminated")
 	}()
 
 
@@ -78,7 +93,7 @@ func main() {
 	select {
 	case <-doneCounter:
 		fmt.Println()
-		fmt.Println("Done counting words.\nTotal: ")
+		fmt.Println("Done counting words.\n")
 	case <-done:
 		fmt.Println()
 		fmt.Println("Done reading.")
