@@ -24,10 +24,10 @@ func main() {
     "Blue are the sparkles in my cats eyes",
   }
 	done := make(chan struct{})
-	doneCounter := make(chan struct{})
+	doneCounter := make(chan bool,2)
 	progress := make(chan string)
 	wordsCounter := make(chan string)
-	counterAccumulator := make(chan int)
+	counterAccumulator := make(chan int,2)
 
 
 	// process words worker
@@ -63,7 +63,7 @@ func main() {
 		// child worker
 		go func () {
 			//defer close(doneCounter)
-			defer close(counterAccumulator)
+			//defer close(counterAccumulator)
 			fmt.Println("*Counter child\n")
 			n := 0;
 			for word := range wordsCounter {
@@ -73,30 +73,60 @@ func main() {
 				continue
 			}
 			counterAccumulator<- n
+			counterAccumulator<- n
 			fmt.Println("*Counter child terminated\n")
 		}()
 		fmt.Println("*Counter terminated\n")
 	}()
 
-	// Accountant worker
+	// group or workers
+	// Accountant1 worker
 	go func() {
 		defer close(doneCounter)
-		fmt.Println("*Result accumulator started")
+		fmt.Println("*Result accumulator started\n")
 		for wordsCount := range counterAccumulator {
-			fmt.Println("Total:", wordsCount)
+			fmt.Println("Total1:", wordsCount)
+			doneCounter<- true
 		}
-		fmt.Println("*Result accumulator terminated")
+		fmt.Println("*Result accumulator terminated\n")
 	}()
 
+	// Accountant2 worker
+	go func() {
+		defer close(doneCounter)
+		fmt.Println("*Result2 accumulator started\n")
+		for wordsCount := range counterAccumulator {
+			fmt.Println("Total2:", wordsCount)
+			doneCounter<- true
+		}
+		fmt.Println("*Result2 accumulator terminated\n")
+	}()
+
+	// group sycronizer(lider)
+	go func() {
+		defer close(done)
+		fmt.Println("*Group leader started\n")
+		workersDoneCount := 0
+		//for workerDone := range doneCounter {
+		for range doneCounter {
+			workersDoneCount++
+			fmt.Println()
+			fmt.Println("workers:", workersDoneCount)
+			if workersDoneCount >= 2 {
+				// termite group
+				close(counterAccumulator)
+				fmt.Println()
+				fmt.Println("Done counting words.\n")
+			}
+		}
+		fmt.Println("*Group leader terminated\n")
+	}()
 
 	// controller-sycronizer
 	select {
-	case <-doneCounter:
-		fmt.Println()
-		fmt.Println("Done counting words.\n")
 	case <-done:
 		fmt.Println()
-		fmt.Println("Done reading.")
+		fmt.Println("Done.")
 	case <-time.After(TIMEOUT * time.Microsecond):
 //	case <-time.After(TIMEOUT * time.Millisecond):
 		fmt.Println()
