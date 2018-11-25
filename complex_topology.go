@@ -197,6 +197,78 @@ func main() {
 	}()
 
 
+
+	//TODO 
+	// nested comlex structure
+	// starter parent worker
+	go func() {
+		// ---------- GROUP-------------------
+		// group or workers for processing queue
+		// they dequeue values randomly
+		go func() {
+			for i := 0; i < cap(processorAccumulator); i++ {
+				// Word processor worker
+				go func(id int) {
+					//defer close(processed)
+					fmt.Printf(" * Word processor worker %d started\n", id)
+					for word := range processorAccumulator {
+						// worker's task
+						//fmt.Printf(" > processor %d: %s\n", id, word)
+						marshaled<- fmt.Sprintf("{%s}", word)
+					}
+					// done when queue is empty
+					doneProcessor<- true
+					fmt.Println()
+					fmt.Printf(" * Word processor worker %d terminated\n", id)
+				}(i) // create worker ID
+			}
+		}()
+		// marshaller worker
+		go func() {
+			defer close(marshalled)
+			fmt.Println(" * Marshaller started")
+			for processedWord := range processed {
+					porocessed<- fmt.Srpitf("tag:%s", processedWord)
+			}
+			fmt.Println(" * Marshaller terminated")
+		}()
+		// writer worker
+		go func() {
+			fmt.Println(" * Writer started")
+			fout, _ := os.Create("./output.txt")
+			defer fout.Close()
+			for processedWord := range processed {
+					//fmt.Println(" -> put: ", processedWord)
+					//fmt.Fprintf(fout, "%s", processedWord)
+			}
+			fmt.Fprintf(fout, "\n")
+			fmt.Println(" * Writer terminated")
+		}()
+		go func() {
+		// group sycronizer(lider)
+			go func() {
+				defer close(processed)
+				fmt.Println(" * Group 2 leader started")
+				workersDoneCount := 0
+				for range doneProcessor {
+					workersDoneCount++
+					fmt.Printf(" > G2 workers %d done\n", workersDoneCount)
+					if workersDoneCount >= WORKERS {
+						// stop cycle and terminate group
+						close(doneProcessor)
+						// done goroup signale
+						doneGroups<- true
+						fmt.Println()
+						fmt.Println(" ! Done processing words")
+					}
+				}
+				fmt.Println(" * Group 3 leader terminated")
+			}()
+		}()
+		// ----------END GROUP-------------------
+	}()
+
+
 	// All groups sycronizer(Supervisor)
 	go func() {
 		// signal everything done
