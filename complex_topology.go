@@ -7,6 +7,7 @@ package main
 import(
 	"fmt"
 	"strings"
+	"os"
 	"time"
 )
 
@@ -22,13 +23,13 @@ const WORKERS = 3
 
 func main() {
 
- data := []string{
-    "The yellow fish swims",
-    "Blue is the water in a crystal glass",
-    "Blue are the lilacs that grow in the grass",
-    "Blue is delicious blueberry pie",
-    "Blue are the sparkles in my cats eyes",
-  }
+	data := []string{
+		"The yellow fish swims",
+		"Blue is the water in a crystal glass",
+		"Blue are the lilacs that grow in the grass",
+		"Blue is delicious blueberry pie",
+		"Blue are the sparkles in my cats eyes",
+	}
 	done := make(chan struct{})
 	doneGroups := make(chan bool, 2)
 	progress := make(chan string)
@@ -39,6 +40,7 @@ func main() {
 	// words processing group 2
 	processorAccumulator := make(chan string, WORKERS)
 	doneProcessor := make(chan bool, WORKERS)
+	processed := make(chan string, WORKERS)
 
 
 	// process words worker
@@ -99,19 +101,21 @@ func main() {
 	// ---------- GROUP-------------------
 	// group or workers for processing queue
 	// they dequeue values randomly
-	for i := 0; i < cap(counterAccumulator); i++ {
-		// Accountant worker
-		go func(id int) {
-			fmt.Printf(" * Accountant worker %d started\n", id)
-			for wordsCount := range counterAccumulator {
-				// worker's task
-				fmt.Printf(" > Total %d: %d\n", id, wordsCount)
-			}
-			doneCounter<- true
-			fmt.Println()
-			fmt.Printf(" * Accountant worker %d terminated\n", id)
-		}(i) // create worker ID
-	}
+	go func() {
+		for i := 0; i < cap(counterAccumulator); i++ {
+			// Accountant worker
+			go func(id int) {
+				fmt.Printf(" * Accountant worker %d started\n", id)
+				for wordsCount := range counterAccumulator {
+					// worker's task
+					fmt.Printf(" > Total %d: %d\n", id, wordsCount)
+				}
+				doneCounter<- true
+				fmt.Println()
+				fmt.Printf(" * Accountant worker %d terminated\n", id)
+			}(i) // create worker ID
+		}
+	}()
 	// group sycronizer(lider)
 	go func() {
 		fmt.Println(" * Group leader started")
@@ -142,12 +146,12 @@ func main() {
 			for i := 0; i < cap(processorAccumulator); i++ {
 				// Word processor worker
 				go func(id int) {
-					//defer close(doneProcessor)
+					//defer close(processed)
 					fmt.Printf(" * Word processor worker %d started\n", id)
 					for word := range processorAccumulator {
 						// worker's task
-						//fmt.Sprintf("%s",word)
-						fmt.Printf(" > processor %d: %s\n", id, word)
+						//fmt.Printf(" > processor %d: %s\n", id, word)
+						processed<- fmt.Sprintf("{%s}", word)
 					}
 					// done when queue is empty
 					doneProcessor<- true
@@ -156,9 +160,22 @@ func main() {
 				}(i) // create worker ID
 			}
 		}()
+		// writer worker
+		go func() {
+			fmt.Println(" * Writerr started")
+			fout, _ := os.Create("./output.txt")
+			defer fout.Close()
+			for processedWord := range processed {
+					//fmt.Println(" -> put: ", processedWord)
+					fmt.Fprintf(fout, "%s", processedWord)
+			}
+			fmt.Fprintf(fout, "\n")
+			fmt.Println(" * Writer terminated")
+		}()
 		go func() {
 		// group sycronizer(lider)
 			go func() {
+				defer close(processed)
 				fmt.Println(" * Group 2 leader started")
 				workersDoneCount := 0
 				for range doneProcessor {
