@@ -40,7 +40,12 @@ func main() {
 	// words processing group 2
 	processorAccumulator := make(chan string, WORKERS)
 	doneProcessor := make(chan bool, WORKERS)
-	processed := make(chan string, WORKERS)
+	processor := make(chan string, WORKERS)
+	// words encoding group 3
+	encoderAccumulator := make(chan string, WORKERS)
+	doneEncoder := make(chan bool, WORKERS)
+	marshaller := make(chan string, WORKERS)
+	encoder := make(chan string, WORKERS)
 
 
 	// process words worker
@@ -77,6 +82,7 @@ func main() {
 		go func () {
 			defer close(processorAccumulator)
 			defer close(counterAccumulator)
+			defer close(encoderAccumulator)
 			fmt.Println(" * Counter child")
 			n := 0;
 			for word := range wordsCounter {
@@ -85,6 +91,7 @@ func main() {
 				// queue words, cycle for similar copy for every worker
 			//	for i := 0; i < cap(processorAccumulator); i++ {
 					processorAccumulator<- word
+					encoderAccumulator<- word
 			//	}
 			}
 			// queue count result
@@ -151,7 +158,7 @@ func main() {
 					for word := range processorAccumulator {
 						// worker's task
 						//fmt.Printf(" > processor %d: %s\n", id, word)
-						processed<- fmt.Sprintf("{%s}", word)
+						processor<- fmt.Sprintf("{%s}", word)
 					}
 					// done when queue is empty
 					doneProcessor<- true
@@ -162,12 +169,12 @@ func main() {
 		}()
 		// writer worker
 		go func() {
-			fmt.Println(" * Writerr started")
+			fmt.Println(" * Writer started")
 			fout, _ := os.Create("./output.txt")
 			defer fout.Close()
-			for processedWord := range processed {
+			for processedWord := range processor {
 					//fmt.Println(" -> put: ", processedWord)
-					fmt.Fprintf(fout, "%s", processedWord)
+					fmt.Fprintf(fout, "%s\n", processedWord)
 			}
 			fmt.Fprintf(fout, "\n")
 			fmt.Println(" * Writer terminated")
@@ -175,7 +182,7 @@ func main() {
 		go func() {
 		// group sycronizer(lider)
 			go func() {
-				defer close(processed)
+				defer close(processor)
 				fmt.Println(" * Group 2 leader started")
 				workersDoneCount := 0
 				for range doneProcessor {
@@ -197,8 +204,6 @@ func main() {
 	}()
 
 
-
-	//TODO 
 	// nested comlex structure
 	// starter parent worker
 	go func() {
@@ -206,18 +211,18 @@ func main() {
 		// group or workers for processing queue
 		// they dequeue values randomly
 		go func() {
-			for i := 0; i < cap(processorAccumulator); i++ {
+			for i := 0; i < cap(encoderAccumulator); i++ {
 				// Word processor worker
 				go func(id int) {
 					//defer close(processed)
 					fmt.Printf(" * Word processor worker %d started\n", id)
-					for word := range processorAccumulator {
+					for word := range encoderAccumulator {
 						// worker's task
 						//fmt.Printf(" > processor %d: %s\n", id, word)
-						marshaled<- fmt.Sprintf("{%s}", word)
+						marshaller<- fmt.Sprintf("%s", word)
 					}
 					// done when queue is empty
-					doneProcessor<- true
+					doneEncoder<- true
 					fmt.Println()
 					fmt.Printf(" * Word processor worker %d terminated\n", id)
 				}(i) // create worker ID
@@ -225,41 +230,43 @@ func main() {
 		}()
 		// marshaller worker
 		go func() {
-			defer close(marshalled)
 			fmt.Println(" * Marshaller started")
-			for processedWord := range processed {
-					porocessed<- fmt.Srpitf("tag:%s", processedWord)
+			for marshalledWord := range marshaller {
+					// worker's task
+					encoder<- fmt.Sprintf("'%s': %s,\n", marshalledWord, marshalledWord)
 			}
 			fmt.Println(" * Marshaller terminated")
 		}()
 		// writer worker
 		go func() {
 			fmt.Println(" * Writer started")
-			fout, _ := os.Create("./output.txt")
+			fout, _ := os.Create("./output.json")
 			defer fout.Close()
-			for processedWord := range processed {
+			fmt.Fprintf(fout, "{\n")
+			for encoderWord := range encoder {
 					//fmt.Println(" -> put: ", processedWord)
-					//fmt.Fprintf(fout, "%s", processedWord)
+					fmt.Fprintf(fout, "\t%s", encoderWord)
 			}
-			fmt.Fprintf(fout, "\n")
+			fmt.Fprintf(fout, "}\n")
 			fmt.Println(" * Writer terminated")
 		}()
 		go func() {
 		// group sycronizer(lider)
 			go func() {
-				defer close(processed)
-				fmt.Println(" * Group 2 leader started")
+				defer close(marshaller)
+				defer close(encoder)
+				fmt.Println(" * Group 3 leader started")
 				workersDoneCount := 0
-				for range doneProcessor {
+				for range doneEncoder {
 					workersDoneCount++
 					fmt.Printf(" > G2 workers %d done\n", workersDoneCount)
 					if workersDoneCount >= WORKERS {
 						// stop cycle and terminate group
-						close(doneProcessor)
+						close(doneEncoder)
 						// done goroup signale
 						doneGroups<- true
 						fmt.Println()
-						fmt.Println(" ! Done processing words")
+						fmt.Println(" ! Done marshalling words")
 					}
 				}
 				fmt.Println(" * Group 3 leader terminated")
@@ -278,7 +285,7 @@ func main() {
 		for range doneGroups {
 			groupsDoneCount++
 			fmt.Printf(" # group %d done\n", groupsDoneCount)
-			if groupsDoneCount >= 2 { // for all groups
+			if groupsDoneCount >= 3 { // for all groups
 				// stop cycle and terminate all supervised groups tree
 				close(doneGroups)
 				fmt.Println()
