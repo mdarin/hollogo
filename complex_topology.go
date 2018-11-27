@@ -35,6 +35,7 @@ func main() {
 		"Blue is delicious blueberry pie",
 		"Blue are the sparkles in my cats eyes",
 	}
+
 	type Communications struct {
 		done chan struct{}
 		doneGroups chan bool
@@ -198,10 +199,10 @@ func main() {
 	go func(c *Communications) {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Println("[W] Group leader FAULT")
+				fmt.Println("[W] Group 1 leader FAULT")
 			}
 		}()
-		fmt.Println(" * Group leader started")
+		fmt.Println(" * Group 1 leader started")
 		workersDoneCount := 0
 		for range c.doneCounter {
 			workersDoneCount++
@@ -215,7 +216,7 @@ func main() {
 		}
 		// done goroup signale
 		(c.doneGroups)<- true
-		fmt.Println(" * Group leader terminated")
+		fmt.Println(" * Group 1 leader terminated")
 	}(&com)
 	// ----------END GROUP-------------------
 
@@ -230,7 +231,6 @@ func main() {
 			for i := 0; i < cap(c.processorAccumulator); i++ {
 				// Word processor worker
 				go func(c *Communications, id int) {
-					//defer close(processed)
 					defer func() {
 						if r := recover(); r != nil {
 							fmt.Println("[W] Word processor worker FAULT")
@@ -309,7 +309,6 @@ func main() {
 			for i := 0; i < cap(c.encoderAccumulator); i++ {
 				// Word processor worker
 				go func(c *Communications, id int) {
-					//defer close(processed)
 					defer func() {
 						if r := recover(); r != nil {
 							fmt.Println("[W] Word processor FAULT")
@@ -322,7 +321,7 @@ func main() {
 						(c.marshaller)<- fmt.Sprintf("%s", word)
 					}
 					// done when queue is empty
-					c.doneEncoder<- true
+					(c.doneEncoder)<- true
 					fmt.Println()
 					fmt.Printf(" * Word processor worker %d terminated\n", id)
 				}(c,i) // create worker ID
@@ -366,13 +365,13 @@ func main() {
 			// LEADER
 			// group sycronizer(lider)
 			go func(c *Communications) {
+				defer close(c.marshaller)
+				defer close(c.encoder)
 				defer func() {
 					if r := recover(); r != nil {
 						fmt.Println("[W] Group 3 leader FAULT")
 					}
 				}()
-				defer close(c.marshaller)
-				defer close(c.encoder)
 				fmt.Println(" * Group 3 leader started")
 				workersDoneCount := 0
 				for range c.doneEncoder {
@@ -382,7 +381,7 @@ func main() {
 						// stop cycle and terminate group
 						close(c.doneEncoder)
 						// done goroup signale
-						c.doneGroups<- true
+						(c.doneGroups)<- true
 						fmt.Println()
 						fmt.Println(" ! Done marshalling words")
 					}
@@ -400,12 +399,12 @@ func main() {
 	// STAND ALONE WORKER
 	// progress monitor #2 worker	
 	go func(c *Communications) {
+		defer close(c.encoderXMLAccumulator)
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Println("[W] Progress XML FAULT")
 			}
 		}()
-		defer close(c.encoderXMLAccumulator)
 		fmt.Println(" * Progress XML sarted")
 		i := 0
 		for word := range c.progressXML {
@@ -433,7 +432,6 @@ func main() {
 							fmt.Println("[W] Word process worker FAULT")
 						}
 					}()
-					//defer close(processed)
 					fmt.Printf(" * Word processor worker %d started\n", id)
 					for word := range c.encoderXMLAccumulator {
 						// worker's task
@@ -484,13 +482,13 @@ func main() {
 		// LIDER
 		// group sycronizer(lider)
 		go func(c *Communications) {
+			defer close(c.marshallerXML)
+			defer close(c.encoderXML)
 			defer func() {
 				if r := recover(); r != nil {
 					fmt.Println("[W] Group 4 leader FAULT")
 				}
 			}()
-			defer close(c.marshallerXML)
-			defer close(c.encoderXML)
 			fmt.Println(" * Group 4 leader started")
 			workersDoneCount := 0
 			for range c.doneEncoderXML {
@@ -540,13 +538,13 @@ func main() {
 	// ROOT SUPERVISOR
 	// All groups sycronizer(Supervisor)
 	go func(c *Communications) {
+		// signal everything done
+		defer close(c.done)
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Println("[W] Supervisor 1 FAULT")
 			}
 		}()
-		// signal everything done
-		defer close(c.done)
 		fmt.Println(" * Supervisor 1 started")
 		groupsDoneCount := 0
 		for range c.doneGroups {

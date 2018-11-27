@@ -1,0 +1,65 @@
+digraph graphname {
+  
+	start
+	end
+
+	reader 
+	progress1
+
+	#counter_parent
+		counter
+	
+	pool_counter
+	groupleader_counter	
+	
+	pool_plaintext
+	writer_plaintext
+	groupleader_plaintext
+
+	#group_starter_parent
+		pool_json
+		marshaller_json
+		writer_json
+		groupleader_json
+
+	# subtree
+	progress_xml
+	pool_xml
+	marshaller_xml
+	writer_xml
+	groupleader_xml
+
+	supervisor_root
+	supervisor_sub
+
+	done
+	timeout
+
+	start -> reader [label="data"];
+	reader -> progress1 [label="data"];
+	progress1 -> counter [label="data"];
+	counter -> pool_counter [label="data"];
+	counter -> pool_plaintext [label="data"];
+	counter -> pool_json [label="data"];
+	counter -> progress_xml [label="data"];
+	pool_counter -> groupleader_counter [label="data"];
+	pool_plaintext -> writer_plaintext [label="data"];
+	writer_plaintext -> groupleader_plaintext [label="data"];
+	pool_json -> marshaller_json [label="data"];
+	marshaller_json -> writer_json [label="data"];
+	writer_json -> groupleader_json [label="data"];
+	progress_xml -> pool_xml [label="data"];
+	pool_xml -> marshaller_xml [label="data"];
+	marshaller_xml -> writer_xml [label="data"];
+	writer_xml -> groupleader_xml [label="signal"];
+	groupleader_xml -> supervisor_sub [label="signal"];
+	supervisor_sub -> supervisor_root [label="signal"];
+	groupleader_counter -> supervisor_root [label="signal"];
+	groupleader_plaintext -> supervisor_root [label="signal"];
+	groupleader_json -> supervisor_root [label="signal"];
+	supervisor_root -> done [label="signal"];
+	supervisor_root -> timeout [label="signal"];
+	done -> end [label="data"];
+	timeout -> end [label="data"];
+}
+
