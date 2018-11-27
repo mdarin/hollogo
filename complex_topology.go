@@ -35,271 +35,363 @@ func main() {
 		"Blue is delicious blueberry pie",
 		"Blue are the sparkles in my cats eyes",
 	}
-	done := make(chan struct{})
-	doneGroups := make(chan bool,4)
-	doneSubGroups := make(chan bool,4)
-	progress := make(chan string)
-	wordsCounter := make(chan string)
-	// words counting group 1
-	counterAccumulator := make(chan int, WORKERS) // workers
-	doneCounter := make(chan bool, WORKERS) // leader
-	// words processing group 2
-	processorAccumulator := make(chan string, WORKERS)
-	doneProcessor := make(chan bool, WORKERS)
-	processor := make(chan string, WORKERS)
-	// words encoding group 3
-	encoderAccumulator := make(chan string, WORKERS)
-	doneEncoder := make(chan bool, WORKERS)
-	marshaller := make(chan string, WORKERS)
-	encoder := make(chan string, WORKERS)
-	// words encoding group 4(supervised)
-	encoderXMLAccumulator := make(chan string, WORKERS)
-	doneEncoderXML := make(chan bool, WORKERS)
-	marshallerXML := make(chan string, WORKERS)
-	encoderXML := make(chan string, WORKERS)
-	progressXML := make(chan string)
+	type Communications struct {
+		done chan struct{}
+		doneGroups chan bool
+		doneSubGroups chan bool
+		progress chan string
+		wordsCounter chan string
+		// words counting group 1
+		counterAccumulator chan int // workers
+		doneCounter chan bool // leader
+		// words processing group 2
+		processorAccumulator chan string
+		doneProcessor chan bool
+		processor chan string
+		// words encoding group 3
+		encoderAccumulator chan string
+		doneEncoder chan bool
+		marshaller chan string
+		encoder chan string
+		// words encoding group 4(supervised)
+		encoderXMLAccumulator chan string
+		doneEncoderXML chan bool
+		marshallerXML chan string
+		encoderXML chan string
+		progressXML chan string
+	}
+
+	var com Communications = Communications{
+		done: make(chan struct{}),
+		doneGroups: make(chan bool,4),
+		doneSubGroups:  make(chan bool,4),
+		progress: make(chan string),
+		wordsCounter: make(chan string),
+		// words counting group 1
+		counterAccumulator:  make(chan int, WORKERS), // workers
+		doneCounter: make(chan bool, WORKERS), // leader
+		// words processing group 2
+		processorAccumulator: make(chan string, WORKERS),
+		doneProcessor: make(chan bool, WORKERS),
+		processor: make(chan string, WORKERS),
+		// words encoding group 3
+		encoderAccumulator: make(chan string, WORKERS),
+		doneEncoder: make(chan bool, WORKERS),
+		marshaller: make(chan string, WORKERS),
+		encoder: make(chan string, WORKERS),
+		// words encoding group 4(supervised)
+		encoderXMLAccumulator: make(chan string, WORKERS),
+		doneEncoderXML: make(chan bool, WORKERS),
+		marshallerXML: make(chan string, WORKERS),
+		encoderXML: make(chan string, WORKERS),
+		progressXML: make(chan string),
+	}
 
 	// STAND ALONE WORKER
 	// process words worker
-	go func() {
-		defer close(progress)
+	go func(c *Communications) {
+		defer close(c.progress)
+		defer func() {
+			//
+			// To be able to recover from an unwinding panic sequence, 
+			// the code must make a deferred call to the recover function.
+			//
+			if r := recover(); r != nil {
+				fmt.Println("[W] Reader FAULT")
+			}
+		}()
 		fmt.Printf(" * Reader started")
 		for word := range wordsGenerator(data) {
-			progress<- word
+			c.progress<- word
 		}
 		fmt.Println()
 		fmt.Println(" * Reader terminated")
-	}()
+	}(&com)
 
 
 	// STAND ALONE WORKER
 	// progress monitor worker
-	go func() {
-		defer close(wordsCounter)
+	go func(c *Communications) {
+		defer close(c.wordsCounter)
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("[W] Progress FAULT")
+			}
+		}()
 		fmt.Println(" * Progress sarted")
 		i := 0
-		for word := range progress {
+		for word := range c.progress {
 			i++
 			fmt.Printf(".")
-			wordsCounter<- word
+			(c.wordsCounter)<- word
 		}
 		fmt.Println()
 		fmt.Println(" * Progress termitated")
-	}()
+	}(&com)
 
 	// STAND ALONE WORKER
 	// simple nested worker
 	// counter worker
 	// Distributor(router,switching station or so on...)
-	go func() {
+	go func(c *Communications) {
 		fmt.Printf(" * Counter started")
 		// child worker
-		go func () {
-			defer close(processorAccumulator)
-			defer close(counterAccumulator)
-			defer close(encoderAccumulator)
-			defer close(progressXML)
+		go func (c *Communications) {
+			defer close(c.processorAccumulator)
+			defer close(c.counterAccumulator)
+			defer close(c.encoderAccumulator)
+			defer close(c.progressXML)
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("[W] Counter child FAULT")
+				}
+			}()
 			fmt.Println(" * Counter child")
 			n := 0;
-			for word := range wordsCounter {
+			for word := range c.wordsCounter {
 				//fmt.Printf("{%s} ", word)
 				n++
 				// queue words, cycle for similar copy for every worker
 			//	for i := 0; i < cap(processorAccumulator); i++ {
-					processorAccumulator<- word
-					encoderAccumulator<- word
-					progressXML<- word
+					c.processorAccumulator<- word
+					c.encoderAccumulator<- word
+					c.progressXML<- word
 			//	}
 			}
 			// queue count result
-			for marker := 0; marker < cap(counterAccumulator); marker++ {
+			for marker := 0; marker < cap(c.counterAccumulator); marker++ {
 				// markup for differ elements
-				counterAccumulator<- n + marker
+				(c.counterAccumulator)<- n + marker
 			}
 			fmt.Println()
 			fmt.Println(" * Counter child terminated")
-		}()
+		}(c)
 		fmt.Println(" * Counter terminated")
-	}()
+	}(&com)
 
 	// ---------- GROUP-------------------
 	// WORKERS POOL
 	// group or workers for processing queue
 	// they dequeue values randomly
-	go func() {
-		for i := 0; i < cap(counterAccumulator); i++ {
+	go func(c *Communications) {
+		for i := 0; i < cap(c.counterAccumulator); i++ {
 			// Accountant worker
-			go func(id int) {
+			go func(c *Communications, id int) {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Println("[W] Accauntant worker FAULT")
+					}
+				}()
 				fmt.Printf(" * Accountant worker %d started\n", id)
-				for wordsCount := range counterAccumulator {
+				for wordsCount := range c.counterAccumulator {
 					// worker's task
 					fmt.Printf(" > Total %d: %d\n", id, wordsCount)
 				}
-				doneCounter<- true
+				(c.doneCounter)<- true
 				fmt.Println()
 				fmt.Printf(" * Accountant worker %d terminated\n", id)
-			}(i) // create worker ID
+			}(c,i) // create worker ID
 		}
-	}()
+	}(&com)
 	// LEADER
 	// group sycronizer(leader)
-	go func() {
+	go func(c *Communications) {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("[W] Group leader FAULT")
+			}
+		}()
 		fmt.Println(" * Group leader started")
 		workersDoneCount := 0
-		for range doneCounter {
+		for range c.doneCounter {
 			workersDoneCount++
 			fmt.Printf(" > G1 workers %d done\n", workersDoneCount)
 			if workersDoneCount >= WORKERS {
 				// stop cycle and terminate group
-				close(doneCounter)
+				close(c.doneCounter)
 				fmt.Println()
 				fmt.Println(" ! Done counting words")
 			}
 		}
 		// done goroup signale
-		doneGroups<- true
+		(c.doneGroups)<- true
 		fmt.Println(" * Group leader terminated")
-	}()
+	}(&com)
 	// ----------END GROUP-------------------
 
 	// ---------- GROUP-------------------
 	// nested comlex structure
 	// starter parent worker
-	go func() {
+	go func(c *Communications) {
 		// WORKERS POOL
 		// group or workers for processing queue
 		// they dequeue values randomly
-		go func() {
-			for i := 0; i < cap(processorAccumulator); i++ {
+		go func(c *Communications) {
+			for i := 0; i < cap(c.processorAccumulator); i++ {
 				// Word processor worker
-				go func(id int) {
+				go func(c *Communications, id int) {
 					//defer close(processed)
+					defer func() {
+						if r := recover(); r != nil {
+							fmt.Println("[W] Word processor worker FAULT")
+						}
+					}()
 					fmt.Printf(" * Word processor worker %d started\n", id)
-					for word := range processorAccumulator {
+					for word := range c.processorAccumulator {
 						// worker's task
 						//fmt.Printf(" > processor %d: %s\n", id, word)
-						processor<- fmt.Sprintf("{%s}", word)
+						(c.processor)<- fmt.Sprintf("{%s}", word)
 					}
 					// done when queue is empty
-					doneProcessor<- true
+					(c.doneProcessor)<- true
 					fmt.Println()
 					fmt.Printf(" * Word processor worker %d terminated\n", id)
-				}(i) // create worker ID
+				}(c,i) // create worker ID
 			}
-		}()
+		}(c)
 		// SNGLE WORKER
 		// writer worker
-		go func() {
+		go func(c *Communications) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("[W] Writer worker FAULT")
+				}
+			}()
 			fmt.Println(" * Writer started")
 			fout, _ := os.Create("./output.txt")
 			defer fout.Close()
-			for processedWord := range processor {
+			for processedWord := range c.processor {
 					//fmt.Println(" -> put: ", processedWord)
 					fmt.Fprintf(fout, "%s\n", processedWord)
 			}
 			fmt.Fprintf(fout, "\n")
 			fmt.Println(" * Writer terminated")
-		}()
-		go func() {
+		}(c)
+		go func(c *Communications) {
 			// LEADER
 			// group sycronizer(lider)
-			go func() {
-				defer close(processor)
+			go func(c *Communications) {
+				defer close(c.processor)
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Println("[W] Group 2 leader FAULT")
+					}
+				}()
 				fmt.Println(" * Group 2 leader started")
 				workersDoneCount := 0
-				for range doneProcessor {
+				for range c.doneProcessor {
 					workersDoneCount++
 					fmt.Printf(" > G2 workers %d done\n", workersDoneCount)
 					if workersDoneCount >= WORKERS {
 						// stop cycle and terminate group
-						close(doneProcessor)
+						close(c.doneProcessor)
 						// done goroup signale
-						doneGroups<- true
+						c.doneGroups<- true
 						fmt.Println()
 						fmt.Println(" ! Done processing words")
 					}
 				}
 				fmt.Println(" * Group 2 leader terminated")
-			}()
-		}()
-	}()
+			}(c)
+		}(c)
+	}(&com)
 	// ----------END GROUP-------------------
 
 
 	// nested comlex structure
 	// starter parent worker
-	go func() {
+	go func(c *Communications) {
 		// ---------- GROUP-------------------
 		// WORKERS POOL
 		// group or workers for processing queue
 		// they dequeue values randomly
-		go func() {
-			for i := 0; i < cap(encoderAccumulator); i++ {
+		go func(c *Communications) {
+			for i := 0; i < cap(c.encoderAccumulator); i++ {
 				// Word processor worker
-				go func(id int) {
+				go func(c *Communications, id int) {
 					//defer close(processed)
+					defer func() {
+						if r := recover(); r != nil {
+							fmt.Println("[W] Word processor FAULT")
+						}
+					}()
 					fmt.Printf(" * Word processor worker %d started\n", id)
-					for word := range encoderAccumulator {
+					for word := range c.encoderAccumulator {
 						// worker's task
 						//fmt.Printf(" > processor %d: %s\n", id, word)
-						marshaller<- fmt.Sprintf("%s", word)
+						(c.marshaller)<- fmt.Sprintf("%s", word)
 					}
 					// done when queue is empty
-					doneEncoder<- true
+					c.doneEncoder<- true
 					fmt.Println()
 					fmt.Printf(" * Word processor worker %d terminated\n", id)
-				}(i) // create worker ID
+				}(c,i) // create worker ID
 			}
-		}()
+		}(c)
 		// SNGLE WORKER
 		// marshaller worker
-		go func() {
+		go func(c *Communications) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("[W] Marshaller JSON FAULT")
+				}
+			}()
 			fmt.Println(" * Marshaller JSON started")
-			for marshalledWord := range marshaller {
+			for marshalledWord := range c.marshaller {
 					// worker's task
-					encoder<- fmt.Sprintf("'%s': %s,\n", marshalledWord, marshalledWord)
+					(c.encoder)<- fmt.Sprintf("'%s': %s,\n", marshalledWord, marshalledWord)
 			}
 			fmt.Println(" * Marshaller JSON terminated")
-		}()
+		}(c)
 		// SINGLE WORKER
 		// writer worker
-		go func() {
+		go func(c *Communications) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("[W] Writer JSON FAULT")
+				}
+			}()
 			fmt.Println(" * Writer JSON started")
 			fout, _ := os.Create("./output.json")
 			defer fout.Close()
 			fmt.Fprintf(fout, "{\n")
-			for encoderWord := range encoder {
+			for encoderWord := range c.encoder {
 					//fmt.Println(" -> put: ", processedWord)
 					fmt.Fprintf(fout, "\t%s", encoderWord)
 			}
 			fmt.Fprintf(fout, "}\n")
 			fmt.Println(" * Writer JSON terminated")
-		}()
-		go func() {
+		}(c)
+		go func(c *Communications) {
 			// LEADER
 			// group sycronizer(lider)
-			go func() {
-				defer close(marshaller)
-				defer close(encoder)
+			go func(c *Communications) {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Println("[W] Group 3 leader FAULT")
+					}
+				}()
+				defer close(c.marshaller)
+				defer close(c.encoder)
 				fmt.Println(" * Group 3 leader started")
 				workersDoneCount := 0
-				for range doneEncoder {
+				for range c.doneEncoder {
 					workersDoneCount++
 					fmt.Printf(" > G2 workers %d done\n", workersDoneCount)
 					if workersDoneCount >= WORKERS {
 						// stop cycle and terminate group
-						close(doneEncoder)
+						close(c.doneEncoder)
 						// done goroup signale
-						doneGroups<- true
+						c.doneGroups<- true
 						fmt.Println()
 						fmt.Println(" ! Done marshalling words")
 					}
 				}
 				fmt.Println(" * Group 3 leader terminated")
-			}()
-		}()
+			}(c)
+		}(c)
 		// ----------END GROUP-------------------
-	}()
+	}(&com)
 
 
 	// ------------------------
@@ -307,137 +399,172 @@ func main() {
 	//
 	// STAND ALONE WORKER
 	// progress monitor #2 worker	
-	go func() {
-		defer close(encoderXMLAccumulator)
+	go func(c *Communications) {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("[W] Progress XML FAULT")
+			}
+		}()
+		defer close(c.encoderXMLAccumulator)
 		fmt.Println(" * Progress XML sarted")
 		i := 0
-		for word := range progressXML {
+		for word := range c.progressXML {
 			i++
 			fmt.Printf("%s","'")
-			encoderXMLAccumulator<- word
+			(c.encoderXMLAccumulator)<- word
 		}
 		fmt.Println()
 		fmt.Println(" * Progress XML termitated")
-	}()
+	}(&com)
 
 	// ---------- GROUP-------------------
 	// nested comlex structure
 	// starter parent worker
-	go func() {
+	go func(c *Communications) {
 		// WORKERS POOL
 		// group or workers for processing queue
 		// they dequeue values randomly
-		go func() {
-			for i := 0; i < cap(encoderXMLAccumulator); i++ {
+		go func(c *Communications) {
+			for i := 0; i < cap(c.encoderXMLAccumulator); i++ {
 				// Word processor worker
-				go func(id int) {
+				go func(c *Communications, id int) {
+					defer func() {
+						if r := recover(); r != nil {
+							fmt.Println("[W] Word process worker FAULT")
+						}
+					}()
 					//defer close(processed)
 					fmt.Printf(" * Word processor worker %d started\n", id)
-					for word := range encoderXMLAccumulator {
+					for word := range c.encoderXMLAccumulator {
 						// worker's task
 						//fmt.Printf(" > processor %d: %s\n", id, word)
-						marshallerXML<- fmt.Sprintf("%s", word)
+						(c.marshallerXML)<- fmt.Sprintf("%s", word)
 					}
 					// done when queue is empty
-					doneEncoderXML<- true
+					(c.doneEncoderXML)<- true
 					fmt.Println()
 					fmt.Printf(" * Word processor worker %d terminated\n", id)
-				}(i) // create worker ID
+				}(c,i) // create worker ID
 			}
-		}()
+		}(c)
 		// SINGLE WORKER
 		// marshaller worker
-		go func() {
+		go func(c *Communications) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("[W] Marshaler XML FAULT")
+				}
+			}()
 			fmt.Println(" * Marshaller XML started")
-			for marshalledWord := range marshallerXML {
+			for marshalledWord := range c.marshallerXML {
 					// worker's task
-					encoderXML<- fmt.Sprintf("<record value=\"%s\" name=\"%s\"/>\n", marshalledWord, marshalledWord)
+					(c.encoderXML)<- fmt.Sprintf("<record value=\"%s\" name=\"%s\"/>\n", marshalledWord, marshalledWord)
 			}
 			fmt.Println(" * Marshaller XML terminated")
-		}()
+		}(c)
 		// SINGLE WORKER
 		// writer worker
-		go func() {
+		go func(c *Communications) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("[W] Writer XML FAULT")
+				}
+			}()
 			fmt.Println(" * Writer XML started")
 			fout, _ := os.Create("./output.xml")
 			defer fout.Close()
 			fmt.Fprintf(fout, "<table name=\"Records\">\n")
-			for encoderWord := range encoderXML {
+			for encoderWord := range c.encoderXML {
 					//fmt.Println(" -> put: ", processedWord)
 					fmt.Fprintf(fout, "\t%s", encoderWord)
 			}
 			fmt.Fprintf(fout, "</table>\n")
 			fmt.Println(" * Writer XML terminated")
-		}()
+		}(c)
 		// LIDER
 		// group sycronizer(lider)
-		go func() {
-			defer close(marshallerXML)
-			defer close(encoderXML)
+		go func(c *Communications) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("[W] Group 4 leader FAULT")
+				}
+			}()
+			defer close(c.marshallerXML)
+			defer close(c.encoderXML)
 			fmt.Println(" * Group 4 leader started")
 			workersDoneCount := 0
-			for range doneEncoderXML {
+			for range c.doneEncoderXML {
 				workersDoneCount++
 				fmt.Printf(" > G4 workers %d done\n", workersDoneCount)
 				if workersDoneCount >= WORKERS {
 					// stop cycle and terminate group
-					close(doneEncoderXML)
+					close(c.doneEncoderXML)
 					// done goroup signale
-					doneSubGroups<- true
+					(c.doneSubGroups)<- true
 					fmt.Println()
 					fmt.Println(" ! Done marshalling words")
 				}
 			}
 			fmt.Println(" * Group 4 leader terminated")
-		}()
-	}()
+		}(c)
+	}(&com)
 	// ----------END GROUP-------------------
 
 	// SUPERVISOR
 	// subtree groups sycronizer(Supervisor)
-	go func() {
+	go func(c *Communications) {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("[W] Supervisor 2 FAULT")
+			}
+		}()
 		fmt.Println(" * Supervisor 2 started")
 		groupsDoneCount := 0
-		for range doneSubGroups {
+		for range c.doneSubGroups {
 			groupsDoneCount++
 			fmt.Printf(" # group %d done\n", groupsDoneCount)
 			if groupsDoneCount >= 1 { // for all groups
 				// stop cycle and terminate all supervised groups tree
-				close(doneSubGroups)
+				close(c.doneSubGroups)
 				fmt.Println()
 				fmt.Println(" ! Done supervised subtree")
 			}
 			// signal everything done in sub group
 			//TODO: defer func() { doneGroups<- true }()
-			doneGroups<- true
+			(c.doneGroups)<- true
 		}
 		fmt.Println(" * Supervisor 2 terminated")
-	}()
+	}(&com)
 	// ------------------END Supervised subtree-----------
 
 	// ROOT SUPERVISOR
 	// All groups sycronizer(Supervisor)
-	go func() {
+	go func(c *Communications) {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("[W] Supervisor 1 FAULT")
+			}
+		}()
 		// signal everything done
-		defer close(done)
+		defer close(c.done)
 		fmt.Println(" * Supervisor 1 started")
 		groupsDoneCount := 0
-		for range doneGroups {
+		for range c.doneGroups {
 			groupsDoneCount++
 			fmt.Printf(" # group %d done\n", groupsDoneCount)
 			if groupsDoneCount >= 4 { // for all groups
 				// stop cycle and terminate all supervised groups tree
-				close(doneGroups)
+				close(c.doneGroups)
 				fmt.Println()
 				fmt.Println(" ! Done supervised tree")
 			}
 		}
 		fmt.Println(" * Supervisor 1 terminated")
-	}()
+	}(&com)
 
 	// controller-sycronizer
 	select {
-	case <-done:
+	case <-(com.done):
 		fmt.Println()
 		fmt.Println()
 		fmt.Println(" ! Done")
@@ -453,15 +580,15 @@ func main() {
 
 func wordsGenerator(data []string) <-chan string {
   outChan := make(chan string)
-  go func() {
-    defer close(outChan)
+  go func(c chan string) {
+    defer close(c)
     for _, line := range data {
       words := strings.Split(line, " ")
       for _, word := range words {
-        outChan<- word
+        c<- word
       }
     }
-  }()
+  }(outChan)
   return outChan
 }
 
