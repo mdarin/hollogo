@@ -523,13 +523,12 @@ func main() {
 			fmt.Printf(" # group %d done\n", groupsDoneCount)
 			if groupsDoneCount >= 1 { // for all groups
 				// stop cycle and terminate all supervised groups tree
-				close(c.doneSubGroups)
+				//close(c.doneSubGroups)
+				// signal everything done in sub group
+				(c.doneGroups)<- true
 				fmt.Println()
 				fmt.Println(" ! Done supervised subtree")
 			}
-			// signal everything done in sub group
-			//TODO: defer func() { doneGroups<- true }()
-			(c.doneGroups)<- true
 		}
 		fmt.Println(" * Supervisor 2 terminated")
 	}(&com)
@@ -553,6 +552,8 @@ func main() {
 			if groupsDoneCount >= 4 { // for all groups
 				// stop cycle and terminate all supervised groups tree
 				close(c.doneGroups)
+				// close supervised sub tree
+				close(c.doneSubGroups)
 				fmt.Println()
 				fmt.Println(" ! Done supervised tree")
 			}

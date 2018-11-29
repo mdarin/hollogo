@@ -37,29 +37,70 @@ digraph graphname {
 
 	start -> reader [label="data"];
 	reader -> progress1 [label="data"];
+	reader -> progress1 [label="sync_close" color="#228b22" fontcolor="#228b22"]
+	
 	progress1 -> counter [label="data"];
+	progress1 -> counter [label="sync_close" color="#228b22" fontcolor="#228b22"]
+
 	counter -> pool_counter [label="data"];
+	counter -> pool_counter [label="sync_close" color="#228b22" fontcolor="#228b22"]	
+
 	counter -> pool_plaintext [label="data"];
+	counter -> pool_plaintext [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
 	counter -> pool_json [label="data"];
+	counter -> pool_json [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
+
 	counter -> progress_xml [label="data"];
+	counter -> progress_xml [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
+
 	pool_counter -> groupleader_counter [label="data"];
+	pool_counter -> groupleader_counter [label="sync_pool_done" color="#ff7e40" fontcolor="#ff7e40"];
+
+	groupleader_counter -> groupleader_counter [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
 	pool_plaintext -> writer_plaintext [label="data"];
-	writer_plaintext -> groupleader_plaintext [label="data"];
+
+	pool_plaintext -> groupleader_plaintext [label="sync_pool_done" color="#ff7e40" fontcolor="#ff7e40"];
+
+	groupleader_plaintext -> writer_plaintext [label="sync_close" color="#228b22" fontcolor="#228b22"];
+	groupleader_plaintext -> groupleader_plaintext [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
+
 	pool_json -> marshaller_json [label="data"];
+	pool_json -> groupleader_json	[label="sync_pool_done" color="#ff7e40" fontcolor="#ff7e40"];
+
 	marshaller_json -> writer_json [label="data"];
-	writer_json -> groupleader_json [label="data"];
+
+	groupleader_json -> marshaller_json [label="sync_close" color="#228b22" fontcolor="#228b22"];
+	groupleader_json -> writer_json [label="sync_close" color="#228b22" fontcolor="#228b22"];
+	groupleader_json -> groupleader_json [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
 	progress_xml -> pool_xml [label="data"];
+	progress_xml -> pool_xml [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
 	pool_xml -> marshaller_xml [label="data"];
+	pool_xml -> groupleader_xml [label="sync_pool_done" color="#ff7e40" fontcolor="#ff7e40"];	
 	marshaller_xml -> writer_xml [label="data"];
-	writer_xml -> groupleader_xml [label="signal"];
-	groupleader_xml -> supervisor_sub [label="signal"];
-	supervisor_sub -> supervisor_root [label="signal"];
-	groupleader_counter -> supervisor_root [label="signal"];
-	groupleader_plaintext -> supervisor_root [label="signal"];
-	groupleader_json -> supervisor_root [label="signal"];
-	supervisor_root -> done [label="signal"];
-	supervisor_root -> timeout [label="signal"];
-	done -> end [label="data"];
-	timeout -> end [label="data"];
+	
+	groupleader_xml -> writer_xml [label="sync_close" color="#228b22" fontcolor="#228b22"];
+	groupleader_xml -> marshaller_xml [label="sync_close" color="#228b22" fontcolor="#228b22"];
+	groupleader_xml -> groupleader_xml [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
+	groupleader_xml -> supervisor_sub [label="sync_group_done" color="lightblue" fontcolor="#FF6347"];
+	groupleader_counter -> supervisor_root [label="sync_group_done" color="lightblue" fontcolor="#FF6347"];
+	groupleader_plaintext -> supervisor_root [label="sync_group_done" color="lightblue" fontcolor="#FF6347"];
+	groupleader_json -> supervisor_root [label="sync_group_done" color="lightblue" fontcolor="#FF6347"];
+	supervisor_sub -> supervisor_root [label="sync_sup_done" color="#c4ed82" fontcolor="#FF6347"];
+	
+	supervisor_root -> supervisor_sub [label="sync_close" color="#228b22" fontcolor="#228b22"];	
+	supervisor_root -> done [label="sync_root_sup_done" color="#f0c0de" fontcolor="#FF6347"];
+	supervisor_root -> timeout [label="sync_root_sup_timeout" color="#f0c0de" fontcolor="#FF6347"];
+	supervisor_root -> supervisor_root [label="sync_close" color="#228b22" fontcolor="#228b22"];
+
+	done -> end [label="sync_app_finished"];
+	timeout -> end [label="sync_app_timeout"];
 }
 
