@@ -70,6 +70,18 @@ func main() {
 			}
 		}()
 		fmt.Printf(" * Root Supervisor started")
+
+		// более общий вариант
+		// обработка множественных каналов
+		//for {
+		//	select {
+		//	case <-workerDone: // воркер сигналит об окончании работы
+		//	case <-groupDone: // группа сигналит об окончании работы
+		//	case <-workerFault: //<...> например, отказ воркера(упал или ещё чего)
+		//	case <-time.After(TIMEOUT * time.Microsecond): // timeout...
+		//	}
+		//}
+
 		for range workerDone {
 		//for worker := range workerDone {
 			//fmt.Println(" * Worker data:", worker)
